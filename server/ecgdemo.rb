@@ -32,7 +32,7 @@ class OBI411Parser
   def parseIOStatus(bytes)
     return 0 if bytes.size < 7
     (id, nodeid, value, mask) = bytes.unpack('CCnn')
-    @client.handleIOStatus([nodeid, value, mask])
+    @client.handleIOStatus(nodeid, value, mask)
     return 7
   end
 
@@ -48,7 +48,7 @@ class OBI411Parser
   def parseADCStatus(bytes)
     return 0 if bytes.size < 6
     (id, nodeid, adcchannel, adcvalue) = bytes.unpack('CCCn')
-    @client.handleADCStatus([nodeid, adcchannel, adcvalue])
+    @client.handleADCStatus(nodeid, adcchannel, adcvalue)
     return 6
   end
 
@@ -62,9 +62,9 @@ class OBI411Parser
   # N + 4  Checksum. The checksum is calculated as the unsigned sum of all bytes in the packet except for the checksum itself.
   def parseDataPacket(bytes)
     return 0 if bytes.size < 5
-    (id, nodeid, len, data) = bytes.unpack('CCCa')
+    (id, nodeid, len) = bytes.unpack('CCC')
     return 0 if bytes.size < len + 4
-    @client.handleData([nodeid, data[0 .. -2]])
+    @client.handleData(nodeid, bytes.slice(3,len))
     return len + 4
   end
 
@@ -95,26 +95,28 @@ class OBI411Parser
       end
       @packet = after.slice(nread .. -1)
     end
+  end
 end
 
 # model: parses serial stream, saves up to MAX_SAMPLES in array, reports samples and other data
 class ECGDemo
   include MonitorMixin
-protected
 
-  def handleADCStatus(s)
+  def handleADCStatus(n,c,v)
     # TODO
-    puts "ADCStatus #{s.inspect}"
+    printf("%0.3f ADC%d %d\n", @timestamp, c, v)
   end
 
-  def handleIOStatus(s)
+  def handleIOStatus(n,v,m)
     # TODO
-    puts "IOStatus #{s.inspect}"
+    printf("%0.3f IO %04x/%04x\n", @timestamp, v, m)
   end
 
-  def handleData(d)
+  def handleData(n,d)
     # TODO
-    puts "Data #{d.inspect}"
+    printf("%0.3f ", @timestamp)
+    d.bytes { |b| printf(" %02x", b) }
+    print("\n")
   end
 
   # active thread
@@ -129,6 +131,7 @@ protected
         end
         if r = rh[0]
           bytes = r.sysread(1000)
+          @timestamp = Time.now.to_f
           @parser.parse(bytes)
         end
       end
@@ -145,10 +148,11 @@ public
     @firstSample = 0
     @portname = portname
     @thread = nil
+    @timestamp = nil
   end
 
-  def open(port)
-    @port = SerialPort.new(port, 115200, 8, 1, SerialPort::NONE)
+  def open
+    @port = SerialPort.new(@portname, 115200, 8, 1, SerialPort::NONE)
     @thread = run
   end
 
@@ -162,7 +166,13 @@ public
   end
 
   def samplesSince(lastSample)
-    from =  [ lastSample - @firstSample, 0 ].max
+    from = [ lastSample - @firstSample, 0 ].max
     @ecgdata.slice(from .. -1)
   end
+end
+
+if __FILE__ == $0
+  reader = ECGDemo.new("/dev/cu.cBMedicalDemo-SPP")
+  th = reader.open
+  th.join
 end
