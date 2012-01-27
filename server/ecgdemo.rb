@@ -1,10 +1,20 @@
+# connectBlue ECG Demo web server application
 require 'rubygems'
-# avoid "undefined method 'create' for class 'Class'" error
-# Kernel::require 'serialport'
 require 'serialport'
 require 'json'
 require 'monitor'
 
+# interface required for OBI411Parser clients
+module OBI411ParserClientMixin
+  # n: node number; c: ADC channel; v: ADC value
+  def handleADCStatus(n,c,v); end
+  # n: node number; v: IO value; m: IO mask
+  def handleIOStatus(n,v,m); end
+  # n: node number; d: data bytes
+  def handleData(n,d); end
+end
+
+# Parser for byte stream from connectBlue OBI411 analog I/O module
 class OBI411Parser
   START_BYTE = "\xA5".force_encoding('BINARY')
   ID_IO_STATUS = "\x01".force_encoding('BINARY')
@@ -98,7 +108,8 @@ class OBI411Parser
   end
 end
 
-# model: parses serial stream, saves up to MAX_SAMPLES in array, reports samples and other data
+# model: parses serial stream, saves up to MAX_SAMPLES in array, reports
+# samples and other data
 class ECGDemo
   include MonitorMixin
 
@@ -120,10 +131,10 @@ class ECGDemo
   end
 
   # active thread
-  def run(pollDelay = 0.1)
+  def run(pollDelay = 0.001)
     Thread.new do
       while true do
-        sleep(pollDelay)
+        sleep(pollDelay) if pollDelay
         (rh, wh, eh) = IO::select([@port], nil, [@port])
         if e = eh[0]
           puts "ECGDemo::run exception on serial port #{e.inspect}"
@@ -152,8 +163,8 @@ public
   end
 
   def open
-    @port = SerialPort.new(@portname, 115200, 8, 1, SerialPort::NONE)
-    @thread = run
+    @port = SerialPort.new(@portname, 230400, 8, 1, SerialPort::NONE)
+    @thread = run(nil)
   end
 
   def addECGSample(val)
@@ -172,7 +183,22 @@ public
 end
 
 if __FILE__ == $0
-  reader = ECGDemo.new("/dev/cu.cBMedicalDemo-SPP")
+  class MyECGDemo < ECGDemo
+    def initialize(portname, datafile, adcfile)
+      super(portname)
+      @datafile = File.open(datafile, 'w')
+      @adcfile = File.open(adcfile, 'w')
+    end
+    def handleData(n,d)
+      d.bytes { |b| @datafile.printf(" %02x", b) }
+      @datafile.print("\n")
+    end
+    def handleADCStatus(n,c,v)
+      @adcfile.printf("%0.3f,%d\n", @timestamp, v)
+    end
+  end
+
+  reader = MyECGDemo.new("/dev/cu.cBMedicalDemo-SPP", 'data.txt', 'adc.csv')
   th = reader.open
   th.join
 end
