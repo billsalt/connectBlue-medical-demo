@@ -126,15 +126,16 @@ class ECGDemo
   end
 
   def handleData(n,d)
-    @noninparser.parse(@timestamp, d)
+    @noninparser.parse(d)
   end
 
   # NOTE no handling of multiple nodes
   def handleNoninSequence(seq)
     # TODO
-    p seq
+    printf("%d %s\n", @timestamp, seq.inspect)
   end
 
+  # return integer milliseconds since start of thread
   def timestamp
     ((Time.now.to_f - @startTime)*1000).round
   end

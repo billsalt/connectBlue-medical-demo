@@ -62,7 +62,10 @@ protected
         (redp << i) if (s & RED_PERFUSION_MASK).nonzero?
       end
     end
-    return { :alarms => alarms, :greenp => greenp, :redp => redp }
+    retval = { :alarms => alarms }
+    retval[:greenp] = greenp unless greenp.empty?
+    retval[:redp] = redp unless redp.empty?
+    return retval
   end
 
   # Report 25-frame (1/3 second) sequence to client.
@@ -70,7 +73,7 @@ protected
   def reportSequence
     frames = @pleth.size
     raise "Missing sync packet! #{frames} frames" if frames != SEQUENCE_LENGTH
-    seq = { :time => @timestamp }.merge(decodeStatus())
+    seq = decodeStatus()
     if seq[:alarms].zero?
       seq[:pleth] = @pleth
       seq[:SpO2] = @other[O_SpO2]
@@ -116,13 +119,11 @@ public
     raise "client must respond to handleNoninSequence" unless client.respond_to? :handleNoninSequence
     @client = client
     @totalFrames = 0
-    @timestamp = 0  # timestamp at start of sequence
     clearSequence
   end
 
   # parse binary string containing an integral number of packets
-  def parse(timestamp, _bytes)
-    @timestamp = timestamp
+  def parse(_bytes)
     _bytes.bytes.each_slice(5) { |b| parseFrame(*b) }
   end
 end
