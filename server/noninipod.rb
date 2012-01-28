@@ -70,7 +70,7 @@ protected
   def reportSequence
     frames = @pleth.size
     raise "Missing sync packet! #{frames} frames" if frames != SEQUENCE_LENGTH
-    seq = { :time => @timestamp, :frames => frames, :startFrame => @totalFrames - frames }.merge(decodeStatus())
+    seq = { :time => @timestamp }.merge(decodeStatus())
     if seq[:alarms].zero?
       seq[:pleth] = @pleth
       seq[:SpO2] = @other[O_SpO2]
@@ -92,7 +92,6 @@ protected
         reportSequence
         clearSequence
       end
-      @timestamp = Time.now.to_f
     else
       return if @totalFrames.zero?
     end
@@ -122,7 +121,8 @@ public
   end
 
   # parse binary string containing an integral number of packets
-  def parse(_bytes)
+  def parse(timestamp, _bytes)
+    @timestamp = timestamp
     _bytes.bytes.each_slice(5) { |b| parseFrame(*b) }
   end
 end

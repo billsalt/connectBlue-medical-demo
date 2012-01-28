@@ -117,22 +117,26 @@ class ECGDemo
 
   def handleADCStatus(n,c,v)
     # TODO
-    printf("%0.3f ADC%d %d\n", @timestamp, c, v)
+    printf("%d ADC%d %d\n", @timestamp, c, v)
   end
 
   def handleIOStatus(n,v,m)
     # TODO
-    printf("%0.3f IO %04x/%04x\n", @timestamp, v, m)
+    printf("%d IO %04x/%04x\n", @timestamp, v, m)
   end
 
   def handleData(n,d)
-    @noninparser.parse(d)
+    @noninparser.parse(@timestamp, d)
   end
 
   # NOTE no handling of multiple nodes
   def handleNoninSequence(seq)
     # TODO
     p seq
+  end
+
+  def timestamp
+    ((Time.now.to_f - @startTime)*1000).round
   end
 
   # active thread
@@ -147,7 +151,7 @@ class ECGDemo
         end
         if r = rh[0]
           bytes = r.sysread(1000)
-          @timestamp = Time.now.to_f
+          @timestamp = timestamp()
           @parser.parse(bytes)
         end
       end
@@ -162,10 +166,11 @@ public
     @noninparser = NoninIpodParser.new(self)
     @ecgdata = Array.new(MAX_SAMPLES)
     @ecgdata[0] = 0
-    @firstSample = 0
+    @lastSample = 0
     @portname = portname
     @thread = nil
     @timestamp = nil
+    @startTime = Time.now.to_f
   end
 
   def open
@@ -178,12 +183,13 @@ public
 
     while @ecgdata.size > MAX_SAMPLES
       @ecgdata.shift
-      @firstSample += 1
+      @lastSample += 1
     end
   end
 
   def samplesSince(lastSample)
-    from = [ lastSample - @firstSample, 0 ].max
+    firstSample = @lastSample - @ecgdata.size + 1
+    from = [ lastSample - firstSample, 0 ].max
     @ecgdata.slice(from .. -1)
   end
 end
