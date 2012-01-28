@@ -4,6 +4,8 @@ require 'serialport'
 require 'json'
 require 'monitor'
 
+require './noninipod'
+
 # interface required for OBI411Parser clients
 module OBI411ParserClientMixin
   # n: node number; c: ADC channel; v: ADC value
@@ -124,10 +126,13 @@ class ECGDemo
   end
 
   def handleData(n,d)
+    @noninparser.parse(d)
+  end
+
+  # NOTE no handling of multiple nodes
+  def handleNoninSequence(seq)
     # TODO
-    printf("%0.3f ", @timestamp)
-    d.bytes { |b| printf(" %02x", b) }
-    print("\n")
+    p seq
   end
 
   # active thread
@@ -154,6 +159,7 @@ public
   MAX_SAMPLES = 2000
   def initialize(portname)
     @parser = OBI411Parser.new(self)
+    @noninparser = NoninIpodParser.new(self)
     @ecgdata = Array.new(MAX_SAMPLES)
     @ecgdata[0] = 0
     @firstSample = 0
@@ -183,22 +189,7 @@ public
 end
 
 if __FILE__ == $0
-  class MyECGDemo < ECGDemo
-    def initialize(portname, datafile, adcfile)
-      super(portname)
-      @datafile = File.open(datafile, 'w')
-      @adcfile = File.open(adcfile, 'w')
-    end
-    def handleData(n,d)
-      d.bytes { |b| @datafile.printf(" %02x", b) }
-      @datafile.print("\n")
-    end
-    def handleADCStatus(n,c,v)
-      @adcfile.printf("%0.3f,%d\n", @timestamp, v)
-    end
-  end
-
-  reader = MyECGDemo.new("/dev/cu.cBMedicalDemo-SPP", 'data.txt', 'adc.csv')
+  reader = ECGDemo.new("/dev/cu.cBMedicalDemo-SPP")
   th = reader.open
   th.join
 end

@@ -10,7 +10,7 @@
 # Frame sync bit in status every 1/25 status byte
 # Data sequence repeats every 25 frames
 
-class NoninIpodReader
+class NoninIpodParser
 protected
   SYNC_CHARACTER = 0x01
   # status byte bits
@@ -133,7 +133,7 @@ if __FILE__ == $0
     p h
   end
 
-  reader = NoninIpodReader.new(self)
+  reader = NoninIpodParser.new(self)
 
   ARGF.each_line do |line|
     reader.parse(line.split(' ').map(&:hex).pack('C*'))
