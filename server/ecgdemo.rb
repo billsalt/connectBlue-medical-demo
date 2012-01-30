@@ -7,7 +7,7 @@ require 'monitor'
 
 require './noninipod'
 
-# interface required for OBI411Parser clients
+# Example of interface required for OBI411Parser clients
 module OBI411ParserClientMixin
   StartTime = Time.now.to_f
 
@@ -18,18 +18,15 @@ module OBI411ParserClientMixin
 
   # n: node number; c: ADC channel; v: ADC value
   def handleADCStatus(n,c,v)
-    # TODO
     printf("%d ADC%d %d\n", timestamp, c, v)
   end
 
   # n: node number; v: IO value; m: IO mask
   def handleIOStatus(n,v,m)
-    # TODO
     printf("%d IO %04x/%04x\n", timestamp, v, m)
   end
 
   def handleNoninSequence(seq)
-    # TODO
     printf("%d %s\n", timestamp, seq.inspect)
   end
 end
@@ -209,7 +206,6 @@ class ECGDemoReader
   def close
     @threadStopped = true
     @thread.join
-    @port.close
     @thread = @port = nil
   end
 
