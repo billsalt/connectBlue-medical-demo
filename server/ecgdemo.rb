@@ -221,8 +221,16 @@ end
 
 # test reading
 if __FILE__ == $0
+  $portname = ARGV[0] || case RUBY_PLATFORM
+    when /linux/
+      "/dev/rfcomm0"
+    when /darwin/
+      "/dev/cu.cBMedicalDemo-SPP"
+    else
+  end
+
   begin
-    reader = ECGDemo.new("/dev/cu.cBMedicalDemo-SPP")
+    reader = ECGDemo.new($portname)
     th = reader.open
     th.join
   rescue Interrupt
