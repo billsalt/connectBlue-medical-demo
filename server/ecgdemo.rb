@@ -153,6 +153,25 @@ class ECGDemoReader
   # def handleNoninSequence(seq)
   # end
 
+  # return probable port name
+  def likelyPortName
+    case RUBY_PLATFORM
+    when /linux/
+      IO.popen("rfcomm -a") do |f|
+        f.lines.each do |l|
+          if /^(\w+): 00:12:.*/.match(l)
+            return "/dev/#{$1}"
+          end
+        end
+      end
+    when /darwin/
+      return "/dev/cu.cBMedicalDemo-SPP"
+    else
+      raise "unsupported platform #{RUBY_PLATFORM}"
+    end
+    nil
+  end
+
   # active thread
   def run(pollDelay = 0.001)
     Thread.new do
@@ -172,7 +191,7 @@ class ECGDemoReader
     end
   end
 
-  def initialize(client, portname)
+  def initialize(client, portname = likelyPortName)
     @client = client
     @obiparser = OBI411Parser.new(self)
     @noninparser = NoninIpodParser.new(client)
@@ -202,6 +221,20 @@ end
 class ECGDemoServer
   include MonitorMixin
   include OBI411ParserClientMixin
+
+  # n: node number; c: ADC channel; v: ADC value
+  def handleADCStatus(n,c,v)
+    # TODO
+  end
+
+  # n: node number; v: IO value; m: IO mask
+  def handleIOStatus(n,v,m)
+    # TODO
+  end
+
+  def handleNoninSequence(seq)
+    # TODO
+  end
 
   MAX_SAMPLES = 2000
 
@@ -246,24 +279,22 @@ end
 
 # test reading
 if __FILE__ == $0
+  class OBI411ParserTest
+    include OBI411ParserClientMixin
+    def initialize
+      @reader = ECGDemoReader.new(self, portname)
+    end
+    def open
+      @reader.open
+    end
+    def close
+      @reader.close
+    end
+  end
+
   if ARGV.size == 1 && %r{^/dev}.match(ARGV[0])
     $portname = ARGV[0]
   else
-    case RUBY_PLATFORM
-    when /linux/
-      IO.popen("rfcomm -a") do |f|
-        f.lines.each do |l|
-          if /^(\w+): 00:12:.*/.match(l)
-            $portname = "/dev/#{$1}"
-            break
-          end
-        end
-      end
-    when /darwin/
-      $portname = "/dev/cu.cBMedicalDemo-SPP"
-    else
-      raise "unsupported platform #{RUBY_PLATFORM}"
-    end
     $stderr.puts("using port #{$portname}")
   end
 
