@@ -1,5 +1,5 @@
 # Nonin ipod SpO2 monitor.
-# $Rev$
+# $Id$
 #
 # Data format #2: 5 byte packets at 75Hz report rate.
 #
