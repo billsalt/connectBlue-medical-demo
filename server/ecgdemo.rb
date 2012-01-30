@@ -221,12 +221,25 @@ end
 
 # test reading
 if __FILE__ == $0
-  $portname = ARGV[0] || case RUBY_PLATFORM
+  if ARGV.size == 1 && %r{^/dev}.match(ARGV[0])
+    $portname = ARGV[0]
+  else
+    case RUBY_PLATFORM
     when /linux/
-      "/dev/rfcomm0"
+      IO.popen("rfcomm -a") do |f|
+        f.lines.each do |l|
+          if /^(\w+): 00:12:.*/.match(l)
+            $portname = "/dev/#{$1}"
+            break
+          end
+        end
+      end
     when /darwin/
-      "/dev/cu.cBMedicalDemo-SPP"
+      $portname = "/dev/cu.cBMedicalDemo-SPP"
     else
+      raise "unsupported platform #{RUBY_PLATFORM}"
+    end
+    $stderr.puts("using port #{$portname}")
   end
 
   begin
