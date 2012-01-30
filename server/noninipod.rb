@@ -1,10 +1,10 @@
 # Nonin ipod SpO2 monitor.
 # $Rev$
-# Data format #2: 75Hz reporting
+#
+# Data format #2: 5 byte packets at 75Hz report rate.
 #
 # each 1/75 second:
-#
-# 0x01 status pleth <other> checksum
+#    0x01 status pleth <other> checksum
 #
 # Meaning of <other> varies frame to frame within 25-frame sequence.
 # Frame sync bit in status every 1/25 status byte
@@ -87,10 +87,12 @@ protected
   # every 1/3 second, calls client back with accumulated data.
   def parseFrame(sync,status,pleth,other,checksum)
     # sanity check
-    if (sync != SYNC_CHARACTER) || (status & ALWAYS_SET_MASK).zero? || (checksum != ((sync + status + pleth + other) & 0xFF))
+    if (sync != SYNC_CHARACTER) || (status & ALWAYS_SET_MASK).zero? ||
+       (checksum != ((sync + status + pleth + other) & 0xFF))
       raise "bad packet: #{[sync, status, pleth, other, checksum]}"
     end
-    if (status & FRAME_SYNC_MASK).nonzero? # beginning of sequence?
+    # is this the beginning of a 25-frame sequence?
+    if (status & FRAME_SYNC_MASK).nonzero?
       if @totalFrames.nonzero?
         reportSequence
         clearSequence

@@ -31,16 +31,18 @@ class OBI411Parser
   # (if any; 0 if a partial) including the checksum byte. However, the checksum
   # byte processing is handled elsewhere.
 
-  # Startbyte = 0xA5   Packet id = 0x01  Node id   Value MSB   Value LSB   Mask MSB  Mask LSB  Checksum
   # Byte  Description
   # 0  Start field. Value 0xA5
   # 1  Packet identity field. Value 0x01
-  # 2  Node id field. The node id of the sender. The node id is configured using the AT*AMIO command.
-  # 3  Value MSB. The status of IO pin 8 to 15.
+  # 2  Node id field. The node id of the sender. The node id is configured
+  #    using the AT*AMIO command.  3  Value MSB. The status of IO pin 8 to 15.
   # 4  Value LSB. The status of IO pin 0 to 7.
-  # 5  Valid mask MSB. Valid status for IO pin 8 to 15. 1 means that the status is valid. 0 means that the status shall be ignored.
-  # 6  Valid mask LSB. Valid status for IO pin 0 to 7. 1 means that the status is valid. 0 means that the status shall be ignored.
-  # 7  Checksum. The checksum is calculated as the unsigned sum of all bytes in the packet except for the checksum itself
+  # 5  Valid mask MSB. Valid status for IO pin 8 to 15. 1 means that the status
+  #    is valid. 0 means that the status shall be ignored.
+  # 6  Valid mask LSB. Valid status for IO pin 0 to 7. 1 means that the status
+  #    is valid. 0 means that the status shall be ignored.
+  # 7  Checksum. The checksum is calculated as the unsigned sum of all bytes in
+  #    the packet except for the checksum itself
   def parseIOStatus(bytes)
     return 0 if bytes.size < 7
     (id, nodeid, value, mask) = bytes.unpack('CCnn')
@@ -48,15 +50,16 @@ class OBI411Parser
     return 7
   end
 
-#   Startbyte = 0xA5   Packet id = 0x04  Node Id   ADC Channel id  Value MSB   Value LSB   Checksum
-#   Byte  Description
-#   0  Start field. Value 0xA5
-#   1  Packet identity field. Value 0x04
-#   2  Node id field. The node id of the sender. The node id is configured using the AT*AMIO command.
-#   3  ADC Channel id.
-#   4  ADC Value MSB.
-#   5  ADC Value LSB.
-#   6  Checksum. The checksum is calculated as the unsigned sum of all bytes in the packet except for the checksum itself.
+  # Byte  Description
+  # 0  Start field. Value 0xA5
+  # 1  Packet identity field. Value 0x04
+  # 2  Node id field. The node id of the sender. The node id is configured
+  #    using the AT*AMIO command.
+  # 3  ADC Channel id.
+  # 4  ADC Value MSB.
+  # 5  ADC Value LSB.
+  # 6  Checksum. The checksum is calculated as the unsigned sum of all bytes
+  #    in the packet except for the checksum itself.
   def parseADCStatus(bytes)
     return 0 if bytes.size < 6
     (id, nodeid, adcchannel, adcvalue) = bytes.unpack('CCCn')
@@ -64,14 +67,16 @@ class OBI411Parser
     return 6
   end
 
-  # Startbyte = 0xA5   Packet id = 0x06  Length field  N bytes application data  Checksum
   # Byte  Description
   # 0  Start field. Value 0xA5
   # 1  Packet identity field. Value 0x06 
-  # 2  Node id field. The id of the node that has generated the packet. The id is ignored by a receiving Bluetooth IO module.
-  # 3  Length field. Byte specifying the number of data bytes in the data field. Maximum length is 20 bytes.
+  # 2  Node id field. The id of the node that has generated the packet. The id
+  #    is ignored by a receiving Bluetooth IO module.
+  # 3  Length field. Byte specifying the number of data bytes in the data
+  #    field. Maximum length is 20 bytes.
   # 4 to (N+3)   N bytes application data. (N > 0)
-  # N + 4  Checksum. The checksum is calculated as the unsigned sum of all bytes in the packet except for the checksum itself.
+  # N + 4  Checksum. The checksum is calculated as the unsigned sum of all
+  #    bytes in the packet except for the checksum itself.
   def parseDataPacket(bytes)
     return 0 if bytes.size < 5
     (id, nodeid, len) = bytes.unpack('CCC')
@@ -82,6 +87,10 @@ class OBI411Parser
 
   def initialize(client)
     @packet = ''.force_encoding('BINARY')
+    # check client protocol compliance
+    [:handleADCStatus, :handleIOStatus, :handleData].each do |sym|
+      raise "client must respond to #{sym}" unless client.respond_to? sym
+    end
     @client = client
   end
 
@@ -112,6 +121,7 @@ end
 
 # model: parses serial stream, saves up to MAX_SAMPLES in array, reports
 # samples and other data
+# NOTE no handling of multiple nodes
 class ECGDemo
   include MonitorMixin
 
@@ -129,7 +139,6 @@ class ECGDemo
     @noninparser.parse(d)
   end
 
-  # NOTE no handling of multiple nodes
   def handleNoninSequence(seq)
     # TODO
     printf("%d %s\n", @timestamp, seq.inspect)
@@ -143,7 +152,7 @@ class ECGDemo
   # active thread
   def run(pollDelay = 0.001)
     Thread.new do
-      while true do
+      until @threadStopped do
         sleep(pollDelay) if pollDelay
         (rh, wh, eh) = IO::select([@port], nil, [@port])
         if e = eh[0]
@@ -153,7 +162,7 @@ class ECGDemo
         if r = rh[0]
           bytes = r.sysread(1000)
           @timestamp = timestamp()
-          @parser.parse(bytes)
+          @obiparser.parse(bytes)
         end
       end
       @port.close
@@ -163,15 +172,17 @@ class ECGDemo
 public
   MAX_SAMPLES = 2000
   def initialize(portname)
-    @parser = OBI411Parser.new(self)
+    @obiparser = OBI411Parser.new(self)
     @noninparser = NoninIpodParser.new(self)
     @ecgdata = Array.new(MAX_SAMPLES)
     @ecgdata[0] = 0
     @lastSample = 0
     @portname = portname
     @thread = nil
-    @timestamp = nil
+    @threadStopped = false
+    @timestamp = nil  # timestamp of last successful packet read
     @startTime = Time.now.to_f
+    @cond = self.new_cond
   end
 
   def open
@@ -179,24 +190,42 @@ public
     @thread = run(nil)
   end
 
-  def addECGSample(val)
-    @ecgdata.push(val)
+  def close
+    @threadStopped = true
+    @thread.join
+    @port.close
+    @thread = @port = nil
+  end
 
-    while @ecgdata.size > MAX_SAMPLES
-      @ecgdata.shift
-      @lastSample += 1
+  def addECGSample(val)
+    self.synchronize do
+      @ecgdata.push(val)
+      while @ecgdata.size > MAX_SAMPLES
+        @ecgdata.shift
+        @lastSample += 1
+      end
+      @cond.signal
     end
   end
 
+  # waits until some samples ready
   def samplesSince(lastSample)
-    firstSample = @lastSample - @ecgdata.size + 1
-    from = [ lastSample - firstSample, 0 ].max
-    @ecgdata.slice(from .. -1)
+    self.synchronize do
+      firstSample = @lastSample - @ecgdata.size + 1
+      from = [ lastSample - firstSample, 0 ].max
+      @ecgdata.slice(from .. -1)
+    end
   end
+
 end
 
+# test reading
 if __FILE__ == $0
-  reader = ECGDemo.new("/dev/cu.cBMedicalDemo-SPP")
-  th = reader.open
-  th.join
+  begin
+    reader = ECGDemo.new("/dev/cu.cBMedicalDemo-SPP")
+    th = reader.open
+    th.join
+  rescue Interrupt
+    reader.close
+  end
 end
