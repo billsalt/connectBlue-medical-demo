@@ -154,7 +154,7 @@ class ECGDemoReader
   # end
 
   # return probable port name
-  def likelyPortName
+  def self.likelyPortName
     case RUBY_PLATFORM
     when /linux/
       IO.popen("rfcomm -a") do |f|
@@ -191,7 +191,7 @@ class ECGDemoReader
     end
   end
 
-  def initialize(client, portname = likelyPortName)
+  def initialize(client, portname)
     @client = client
     @obiparser = OBI411Parser.new(self)
     @noninparser = NoninIpodParser.new(client)
@@ -238,7 +238,7 @@ class ECGDemoServer
 
   MAX_SAMPLES = 2000
 
-  def initialize(portname)
+  def initialize(portname = ECGDemoReader.likelyPortName)
     @reader = ECGDemoReader.new(self, portname)
     @ecgdata = Array.new(MAX_SAMPLES)
     @ecgdata[0] = 0
@@ -281,7 +281,7 @@ end
 if __FILE__ == $0
   class OBI411ParserTest
     include OBI411ParserClientMixin
-    def initialize
+    def initialize(portname)
       @reader = ECGDemoReader.new(self, portname)
     end
     def open
@@ -295,11 +295,12 @@ if __FILE__ == $0
   if ARGV.size == 1 && %r{^/dev}.match(ARGV[0])
     $portname = ARGV[0]
   else
+    $portname = ECGDemoReader.likelyPortName
     $stderr.puts("using port #{$portname}")
   end
 
   begin
-    reader = ECGDemoServer.new($portname)
+    reader = OBI411ParserTest.new($portname)
     th = reader.open
     th.join
   rescue Interrupt
