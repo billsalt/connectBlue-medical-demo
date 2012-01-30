@@ -9,12 +9,29 @@ require './noninipod'
 
 # interface required for OBI411Parser clients
 module OBI411ParserClientMixin
+  StartTime = Time.now.to_f
+
+  # return integer milliseconds since start
+  def timestamp
+    ((Time.now.to_f - StartTime)*1000).round
+  end
+
   # n: node number; c: ADC channel; v: ADC value
-  def handleADCStatus(n,c,v); end
+  def handleADCStatus(n,c,v)
+    # TODO
+    printf("%d ADC%d %d\n", timestamp, c, v)
+  end
+
   # n: node number; v: IO value; m: IO mask
-  def handleIOStatus(n,v,m); end
-  # n: node number; d: data bytes
-  def handleData(n,d); end
+  def handleIOStatus(n,v,m)
+    # TODO
+    printf("%d IO %04x/%04x\n", timestamp, v, m)
+  end
+
+  def handleNoninSequence(seq)
+    # TODO
+    printf("%d %s\n", timestamp, seq.inspect)
+  end
 end
 
 # Parser for byte stream from connectBlue OBI411 analog I/O module
@@ -120,35 +137,21 @@ class OBI411Parser
   end
 end
 
-# model: parses serial stream, saves up to MAX_SAMPLES in array, reports
-# samples and other data
-# NOTE no handling of multiple nodes
-class ECGDemo
-  include MonitorMixin
-
+class ECGDemoReader
   def handleADCStatus(n,c,v)
-    # TODO
-    printf("%d ADC%d %d\n", @timestamp, c, v)
+    @client.handleADCStatus(n,c,v)
   end
 
   def handleIOStatus(n,v,m)
-    # TODO
-    printf("%d IO %04x/%04x\n", @timestamp, v, m)
+    @client.handleIOStatus(n,v,m)
   end
 
   def handleData(n,d)
     @noninparser.parse(d)
   end
 
-  def handleNoninSequence(seq)
-    # TODO
-    printf("%d %s\n", @timestamp, seq.inspect)
-  end
-
-  # return integer milliseconds since start of thread
-  def timestamp
-    ((Time.now.to_f - @startTime)*1000).round
-  end
+  # def handleNoninSequence(seq)
+  # end
 
   # active thread
   def run(pollDelay = 0.001)
@@ -162,7 +165,6 @@ class ECGDemo
         end
         if r = rh[0]
           bytes = r.sysread(1000)
-          @timestamp = timestamp()
           @obiparser.parse(bytes)
         end
       end
@@ -170,20 +172,14 @@ class ECGDemo
     end
   end
 
-public
-  MAX_SAMPLES = 2000
-  def initialize(portname)
+  def initialize(client, portname)
+    @client = client
     @obiparser = OBI411Parser.new(self)
-    @noninparser = NoninIpodParser.new(self)
-    @ecgdata = Array.new(MAX_SAMPLES)
-    @ecgdata[0] = 0
-    @lastSample = 0
+    @noninparser = NoninIpodParser.new(client)
     @portname = portname
     @thread = nil
     @threadStopped = false
-    @timestamp = nil  # timestamp of last successful packet read
     @startTime = Time.now.to_f
-    @cond = self.new_cond
   end
 
   def open
@@ -196,6 +192,26 @@ public
     @thread.join
     @port.close
     @thread = @port = nil
+  end
+
+end
+
+# model: parses serial stream, saves up to MAX_SAMPLES in array, reports
+# samples and other data
+# NOTE no handling of multiple nodes
+class ECGDemoServer
+  include MonitorMixin
+  include OBI411ParserClientMixin
+
+  MAX_SAMPLES = 2000
+
+  def initialize(portname)
+    @reader = ECGDemoReader.new(self, portname)
+    @ecgdata = Array.new(MAX_SAMPLES)
+    @ecgdata[0] = 0
+    @lastSample = 0
+    @startTime = Time.now.to_f
+    @cond = self.new_cond
   end
 
   def addECGSample(val)
@@ -216,6 +232,14 @@ public
       from = [ lastSample - firstSample, 0 ].max
       @ecgdata.slice(from .. -1)
     end
+  end
+
+  def open
+    @reader.open
+  end
+
+  def close
+    @reader.close
   end
 
 end
@@ -244,7 +268,7 @@ if __FILE__ == $0
   end
 
   begin
-    reader = ECGDemo.new($portname)
+    reader = ECGDemoServer.new($portname)
     th = reader.open
     th.join
   rescue Interrupt
