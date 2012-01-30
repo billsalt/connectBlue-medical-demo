@@ -26,7 +26,7 @@ module OBI411ParserClientMixin
     printf("%d IO %04x/%04x\n", timestamp, v, m)
   end
 
-  def handleNoninSequence(seq)
+  def handleNoninSequence(n,seq)
     printf("%d %s\n", timestamp, seq.inspect)
   end
 end
@@ -144,10 +144,10 @@ class ECGDemoReader
   end
 
   def handleData(n,d)
-    @noninparser.parse(d)
+    @noninparser.parse(n,d)
   end
 
-  # def handleNoninSequence(seq)
+  # def handleNoninSequence(n,seq)
   # end
 
   # return probable port name
@@ -228,7 +228,7 @@ class ECGDemoServer
     # TODO
   end
 
-  def handleNoninSequence(seq)
+  def handleNoninSequence(n,seq)
     # TODO
   end
 

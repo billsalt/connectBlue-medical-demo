@@ -70,7 +70,7 @@ protected
 
   # Report 25-frame (1/3 second) sequence to client.
   # Omit invalid data.
-  def reportSequence
+  def reportSequence(node)
     frames = @pleth.size
     raise "Missing sync packet! #{frames} frames" if frames != SEQUENCE_LENGTH
     seq = decodeStatus()
@@ -80,12 +80,12 @@ protected
     end
     hr = (@other[O_HR_MSB] * 256) + @other[O_HR_LSB]
     (seq[:heartRate] = hr) unless (hr & 512).nonzero?
-    @client.handleNoninSequence(seq)
+    @client.handleNoninSequence(node,seq)
   end
 
   # parse a 5-byte packet (called every 1/75 second)
   # every 1/3 second, calls client back with accumulated data.
-  def parseFrame(sync,status,pleth,other,checksum)
+  def parseFrame(node,sync,status,pleth,other,checksum)
     # sanity check
     if (sync != SYNC_CHARACTER) || (status & ALWAYS_SET_MASK).zero? ||
        (checksum != ((sync + status + pleth + other) & 0xFF))
@@ -94,7 +94,7 @@ protected
     # is this the beginning of a 25-frame sequence?
     if (status & FRAME_SYNC_MASK).nonzero?
       if @totalFrames.nonzero?
-        reportSequence
+        reportSequence(node)
         clearSequence
       end
     else
@@ -125,8 +125,8 @@ public
   end
 
   # parse binary string containing an integral number of packets
-  def parse(_bytes)
-    _bytes.bytes.each_slice(5) { |b| parseFrame(*b) }
+  def parse(_node,_bytes)
+    _bytes.bytes.each_slice(5) { |b| parseFrame(_node,*b) }
   end
 end
 
