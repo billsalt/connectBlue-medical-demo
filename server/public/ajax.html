@@ -1,0 +1,70 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+ <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>connectBlue ECG Demo</title>
+    <link href="layout.css" rel="stylesheet" type="text/css">
+    <script language="javascript" type="text/javascript" src="jquery.js"></script>
+    <script language="javascript" type="text/javascript" src="jquery.flot.js"></script>
+ </head>
+    <body>
+    <h1>connectBlue ECG Demo</h1>
+    <div id="placeholder" style="width: 800px; height: 200px;"></div>
+
+<script type="text/javascript">
+$(function () {
+    var options = {
+        lines: { show: true },
+        points: { show: true },
+        xaxis: { tickDecimals: 0, tickSize: 1 }
+    };
+    var data = [];
+    var placeholder = $("#placeholder");
+    var lastReport = null;
+    var ref = 0;
+
+    function fetchData() {
+      $.ajax({
+          url: "data.json",
+          method: 'GET',
+          dataType: 'json',
+          success: onDataReceived
+      });
+    }
+
+    // returns new 2-element array with time shifted
+    // by value of ref
+    var shiftData = function(a) {
+      return [a[0] + ref, a[1]];
+    }
+
+    // series properties:
+    // 'alarms' = <int>  bitmask
+    // 'spO2' = <int> percent
+    // 'hr' = <int> heart rate, BPM
+    // 'battV' = <float> battery voltage
+    // 'ref' = <int> lastSample
+    // 'ecg' = [[t,v],[t,v] ... ]
+    //    where t = timestamps in msec since lastSample
+    //      and v = 16-bit unsigned value 
+    function onDataReceived(series) {
+      lastReport = series;
+      ref = series.ref;
+      var shifted = series.ecg.map(shiftData);
+
+      // data = data + shifted
+      data = data.concat(shifted);
+      // chop data to last N points
+      if (data.length > 800) {
+        data = data.slice(data.length - 800);
+      }
+      $.plot($("#placeholder"), data);
+      fetchData();
+    }
+
+    fetchData();
+});
+</script>
+
+  </body>
+</html>

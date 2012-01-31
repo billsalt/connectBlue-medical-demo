@@ -32,5 +32,5 @@ end
 # documentation
 get "/docs" do
   filenames = Dir.glob($webpublic + "/docs/*.*")
-  filenames.each 
+  filenames.inspect
 end

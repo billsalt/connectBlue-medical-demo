@@ -245,6 +245,16 @@ class ECGDemoServer
     # TODO
   end
 
+  def addECGSample(val)
+    @mon.synchronize do
+      ts = timestamp
+      @ecgdata.push([ts, val])
+      @lastSample = ts
+      @ecgdata.shift while @ecgdata.size > MAX_SAMPLES
+      @cond.broadcast
+    end
+  end
+
   # n: node number; seq: hash with values from Nonin
   # keys:
   # :alarms (bitmask)
@@ -275,16 +285,6 @@ class ECGDemoServer
     @heartRate = 0
   end
 
-  def addECGSample(val)
-    @mon.synchronize do
-      ts = timestamp
-      @ecgdata.push([ts, val])
-      @lastSample = ts
-      @ecgdata.shift while @ecgdata.size > MAX_SAMPLES
-      @cond.broadcast
-    end
-  end
-
   # waits until some samples ready
   # lastSample is msec timestamp value
   def samplesSince(lastSample)
@@ -307,7 +307,9 @@ class ECGDemoServer
 
   # JSON status
   def status
-    { :port => @portname, :lastSample => @lastSample, :ecgdata => @ecgdata, :batteryV => @batteryVoltage, :spO2 => @spO2, :heartRate => @heartRate }.to_json
+    { :port => @portname, :lastSample => @lastSample, :ecgdata => @ecgdata,
+      :batteryV => @batteryVoltage, :spO2 => @spO2, :heartRate => @heartRate
+    }.to_json
   end
 
   # Keys:
