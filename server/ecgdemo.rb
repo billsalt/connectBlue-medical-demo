@@ -222,8 +222,9 @@ class ECGDemoServer
   include OBI411ParserClientMixin
 
   # 2.85Vadc = 0xFFFF = 6.75Vbatt
+  # round to nearest 10 mV
   def scaleBatteryVoltage(v)
-    (v * 6.75) / 65536
+    ((v * 675) / 65536.0).round / 100.0
   end
 
   # n: node number; c: ADC channel; v: ADC value
@@ -301,13 +302,23 @@ class ECGDemoServer
     @reader.close
   end
 
+  # Keys:
+  # 'alarms' = <int>  bitmask
+  # 'spO2' = <int> percent
+  # 'hr' = <int> heart rate, BPM
+  # 'battV' = <float> battery voltage
+  # 'ecg' = [[t,v],[t,v] ... ]
+  #    where t = timestamps in msec since start
+  #      and v = 16-bit unsigned value 
   def jsonSince(lastSample)
+    # block until new data available
+    s = samplesSince(lastSample)
     j = { :alarms => @alarms,
       :spO2 => @spO2,
       :hr => @heartRate,
       :battV => @batteryVoltage,
-      :ecgdata => samplesSince(lastSample) }.to_json
-    return [j, @ecgdata[-1][0]]
+      :ecg => s }.to_json
+    return [j, s[-1][0]]
   end
 
 end
@@ -351,7 +362,7 @@ begin
   t = 0
   while true
     (j,t) = s.jsonSince(t)
-    p [t, j]
+    printf("%06d  %s\n", t, j)
     sleep 2
   end
 
