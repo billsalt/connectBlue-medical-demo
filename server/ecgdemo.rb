@@ -280,7 +280,7 @@ class ECGDemoServer
       @ecgdata.push([ts, val])
       @lastSample = ts
       @ecgdata.shift while @ecgdata.size > MAX_SAMPLES
-      @cond.signal
+      @cond.broadcast
     end
   end
 
@@ -290,7 +290,7 @@ class ECGDemoServer
     @mon.synchronize do
       @cond.wait_while { @lastSample <= lastSample }
       first = @ecgdata.find_index { |s| s[0] > lastSample }
-      @ecgdata.slice(first .. -1)
+      @ecgdata.slice(first .. -1).map { |a| [a[0] - lastSample, a[1]] }
     end
   end
 
@@ -307,8 +307,9 @@ class ECGDemoServer
   # 'spO2' = <int> percent
   # 'hr' = <int> heart rate, BPM
   # 'battV' = <float> battery voltage
+  # 'ref' = <int> lastSample
   # 'ecg' = [[t,v],[t,v] ... ]
-  #    where t = timestamps in msec since start
+  #    where t = timestamps in msec since lastSample
   #      and v = 16-bit unsigned value 
   def jsonSince(lastSample)
     # block until new data available
@@ -317,8 +318,9 @@ class ECGDemoServer
       :spO2 => @spO2,
       :hr => @heartRate,
       :battV => @batteryVoltage,
+      :ref => lastSample,
       :ecg => s }.to_json
-    return [j, s[-1][0]]
+    return [j, s[-1][0] + lastSample]
   end
 
 end
@@ -362,7 +364,8 @@ begin
   t = 0
   while true
     (j,t) = s.jsonSince(t)
-    printf("%06d  %s\n", t, j)
+    puts t
+    puts j
     sleep 2
   end
 
