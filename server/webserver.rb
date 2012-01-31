@@ -16,11 +16,10 @@ $datasource = ECGDemoServer.new.start
 
 # Home screen
 get '/data.json' do
-  last_sample = (request.cookies['last_sample'] || "0").to_i
+  last_sample = (params['last_sample'] || "0").to_i
   # get all samples since last one
   content_type :json
   (j,t) = $datasource.jsonSince(last_sample)
-  response.set_cookie("last_sample", t)
   j
 end
 

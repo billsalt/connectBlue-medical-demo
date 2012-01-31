@@ -13,10 +13,13 @@
 
 <script type="text/javascript">
 $(function () {
+    var firstTime = 0;
+    var lastTime = 0;
     var options = {
         lines: { show: true },
-        points: { show: true },
-        xaxis: { tickDecimals: 0, tickSize: 1 }
+        points: { show: false },
+	xaxis: { min: firstTime, max: lastTime },
+	yaxis: { min: 0, max: 65535 }
     };
     var data = [];
     var placeholder = $("#placeholder");
@@ -25,7 +28,8 @@ $(function () {
 
     function fetchData() {
       $.ajax({
-          url: "data.json",
+          url: "/data.json",
+          data: { last_sample: lastTime  },
           method: 'GET',
           dataType: 'json',
           success: onDataReceived
@@ -51,14 +55,15 @@ $(function () {
       lastReport = series;
       ref = series.ref;
       var shifted = series.ecg.map(shiftData);
-
       // data = data + shifted
       data = data.concat(shifted);
       // chop data to last N points
       if (data.length > 800) {
         data = data.slice(data.length - 800);
       }
-      $.plot($("#placeholder"), data);
+      lastTime = options.xaxis.max = data[data.length - 1][0];
+      firstTime = options.xaxis.min = data[0][0];
+      $.plot($("#placeholder"), data, options);
       fetchData();
     }
 
