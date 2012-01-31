@@ -2,74 +2,25 @@
 <html>
  <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <!-- <meta http-equiv="Cache-Control" content="no-cache"> -->
     <title>connectBlue ECG Demo</title>
     <link href="layout.css" rel="stylesheet" type="text/css">
     <script language="javascript" type="text/javascript" src="jquery.js"></script>
     <script language="javascript" type="text/javascript" src="jquery.flot.js"></script>
+    <script language="javascript" type="text/javascript" src="demo.js"></script>
  </head>
     <body>
-    <h1>connectBlue ECG Demo</h1>
-    <div id="placeholder" style="width: 800px; height: 200px;"></div>
-
-<script type="text/javascript">
-$(function () {
-    var firstTime = 0;
-    var lastTime = 0;
-    var options = {
-        lines: { show: true },
-        points: { show: false },
-	xaxis: { min: firstTime, max: lastTime },
-	yaxis: { min: 0, max: 65535 }
-    };
-    var data = [];
-    var placeholder = $("#placeholder");
-    var lastReport = null;
-    var ref = 0;
-
-    function fetchData() {
-      $.ajax({
-          url: "/data.json",
-          data: { last_sample: lastTime  },
-          method: 'GET',
-          dataType: 'json',
-          success: onDataReceived
-      });
-    }
-
-    // returns new 2-element array with time shifted
-    // by value of ref
-    var shiftData = function(a) {
-      return [a[0] + ref, a[1]];
-    }
-
-    // series properties:
-    // 'alarms' = <int>  bitmask
-    // 'spO2' = <int> percent
-    // 'hr' = <int> heart rate, BPM
-    // 'battV' = <float> battery voltage
-    // 'ref' = <int> lastSample
-    // 'ecg' = [[t,v],[t,v] ... ]
-    //    where t = timestamps in msec since lastSample
-    //      and v = 16-bit unsigned value 
-    function onDataReceived(series) {
-      lastReport = series;
-      ref = series.ref;
-      var shifted = series.ecg.map(shiftData);
-      // data = data + shifted
-      data = data.concat(shifted);
-      // chop data to last N points
-      if (data.length > 800) {
-        data = data.slice(data.length - 800);
-      }
-      lastTime = options.xaxis.max = data[data.length - 1][0];
-      firstTime = options.xaxis.min = data[0][0];
-      $.plot($("#placeholder"), data, options);
-      fetchData();
-    }
-
-    fetchData();
-});
-</script>
-
+    <img src="connectBlue-logo.png">
+    <div id="stats">
+	    <div id="hr"><span class="label">HR:</span><span class="value">--</span></div>
+	    <div id="spO2"><span class="label">SpO<sub>2</sub>%:</span><span class="value">--</span></div>
+	    <div id="batt"><span class="label">BattV:</span><span class="value">0.00</span></div>
+    </div>
+    <div id="placeholder"></div>
+    <div id="caveats">
+	    <p>FOR DEMONSTRATION PURPOSES ONLY<br/>
+	    NOT FOR PATIENT USE</p>
+    </div>
+    <div id="stopbutton">STOP</div>
   </body>
 </html>

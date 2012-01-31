@@ -264,9 +264,12 @@ class ECGDemoServer
   # :SpO2 (only if alarms == 0)
   # :pleth (array[25]) (only if alarms == 0)
   def handleNoninSequence(n,seq)
-    @alarms = seq[:alarms]
-    @spO2 = seq[:SpO2] || @spO2
-    @heartRate = seq[:heartRate] || @heartRate
+    @mon.synchronize do
+      @alarms = seq[:alarms]
+      @spO2 = seq[:SpO2]
+      @heartRate = seq[:heartRate]
+      @cond.broadcast
+    end
   end
 
   MAX_SAMPLES = 2000
