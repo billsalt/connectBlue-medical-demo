@@ -26,6 +26,7 @@ module OBI411ParserClientMixin
     printf("%d IO %04x/%04x\n", timestamp, v, m)
   end
 
+  # n: node number; seq: hash with values from Nonin
   def handleNoninSequence(n,seq)
     printf("%d %s\n", timestamp, seq.inspect)
   end
@@ -135,14 +136,17 @@ class OBI411Parser
 end
 
 class ECGDemoReader
+  # n: node number; c: ADC channel; v: ADC value
   def handleADCStatus(n,c,v)
     @client.handleADCStatus(n,c,v)
   end
 
+  # n: node number; v: IO value; m: IO mask
   def handleIOStatus(n,v,m)
     @client.handleIOStatus(n,v,m)
   end
 
+  # n: node number; d: data from Nonin
   def handleData(n,d)
     @noninparser.parse(n,d)
   end
@@ -215,12 +219,24 @@ end
 # samples and other data
 # NOTE no handling of multiple nodes
 class ECGDemoServer
-  include MonitorMixin
   include OBI411ParserClientMixin
 
+  # 2.85Vadc = 0xFFFF = 6.75Vbatt
+  def scaleBatteryVoltage(v)
+    (v * 6.75) / 65536
+  end
+
   # n: node number; c: ADC channel; v: ADC value
+  # Channel 0 is EKG signal
+  # Channel 1 is battery V
   def handleADCStatus(n,c,v)
-    # TODO
+    if c == 0
+      addECGSample(v)
+    elsif c == 1
+      @batteryVoltage = scaleBatteryVoltage(v)
+    else
+      raise "unknown ADC channel #{c}"
+    end
   end
 
   # n: node number; v: IO value; m: IO mask
@@ -228,53 +244,83 @@ class ECGDemoServer
     # TODO
   end
 
+  # n: node number; seq: hash with values from Nonin
+  # keys:
+  # :alarms (bitmask)
+  # :greenp (array)
+  # :redp (array)
+  # :heartRate
+  # :SpO2 (only if alarms == 0)
+  # :pleth (array[25]) (only if alarms == 0)
   def handleNoninSequence(n,seq)
-    # TODO
+    @alarms = seq[:alarms]
+    @spO2 = seq[:SpO2] || @spO2
+    @heartRate = seq[:heartRate] || @heartRate
   end
 
   MAX_SAMPLES = 2000
 
   def initialize(portname = ECGDemoReader.likelyPortName)
     @reader = ECGDemoReader.new(self, portname)
-    @ecgdata = Array.new(MAX_SAMPLES)
-    @ecgdata[0] = 0
+    @mon = Monitor.new
+    @cond = @mon.new_cond
+
     @lastSample = 0
-    @startTime = Time.now.to_f
-    @cond = self.new_cond
+    @batteryVoltage = 0.0
+    @ecgdata = Array.new
+    @ecgdata[0] = [0,0]
+    @spO2 = 0
+    @heartRate = 0
   end
 
   def addECGSample(val)
-    self.synchronize do
-      @ecgdata.push(val)
-      while @ecgdata.size > MAX_SAMPLES
-        @ecgdata.shift
-        @lastSample += 1
-      end
+    @mon.synchronize do
+      ts = timestamp
+      @ecgdata.push([ts, val])
+      @lastSample = ts
+      @ecgdata.shift while @ecgdata.size > MAX_SAMPLES
       @cond.signal
     end
   end
 
   # waits until some samples ready
+  # lastSample is msec timestamp value
   def samplesSince(lastSample)
-    self.synchronize do
-      firstSample = @lastSample - @ecgdata.size + 1
-      from = [ lastSample - firstSample, 0 ].max
-      @ecgdata.slice(from .. -1)
+    @mon.synchronize do
+      @cond.wait_while { @lastSample <= lastSample }
+      first = @ecgdata.find_index { |s| s[0] > lastSample }
+      @ecgdata.slice(first .. -1)
     end
   end
 
-  def open
+  def start
     @reader.open
   end
 
-  def close
+  def stop
     @reader.close
+  end
+
+  def jsonSince(lastSample)
+    j = { :alarms => @alarms,
+      :spO2 => @spO2,
+      :hr => @heartRate,
+      :battV => @batteryVoltage,
+      :ecgdata => samplesSince(lastSample) }.to_json
+    return [j, @ecgdata[-1][0]]
   end
 
 end
 
 # test reading
 if __FILE__ == $0
+  if ARGV.size == 1 && %r{^/dev}.match(ARGV[0])
+    $portname = ARGV[0]
+  else
+    $portname = ECGDemoReader.likelyPortName
+    $stderr.puts("using port #{$portname}")
+  end
+
   class OBI411ParserTest
     include OBI411ParserClientMixin
     def initialize(portname)
@@ -286,20 +332,31 @@ if __FILE__ == $0
     def close
       @reader.close
     end
+    def self.test(portname)
+      begin
+        reader = self.new(portname)
+        th = reader.open
+        th.join
+      rescue Interrupt
+        reader.close
+      end
+    end
   end
 
-  if ARGV.size == 1 && %r{^/dev}.match(ARGV[0])
-    $portname = ARGV[0]
-  else
-    $portname = ECGDemoReader.likelyPortName
-    $stderr.puts("using port #{$portname}")
+#  OBI411ParserTest.test($portname)
+
+begin
+  s = ECGDemoServer.new($portname)
+  s.start
+  t = 0
+  while true
+    (j,t) = s.jsonSince(t)
+    p [t, j]
+    sleep 2
   end
 
-  begin
-    reader = OBI411ParserTest.new($portname)
-    th = reader.open
-    th.join
-  rescue Interrupt
-    reader.close
-  end
+rescue Interrupt
+  s.close
+end
+
 end
