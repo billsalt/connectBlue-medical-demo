@@ -262,6 +262,7 @@ class ECGDemoServer
   MAX_SAMPLES = 2000
 
   def initialize(portname = ECGDemoReader.likelyPortName)
+    @portname = portname
     @reader = ECGDemoReader.new(self, portname)
     @mon = Monitor.new
     @cond = @mon.new_cond
@@ -296,10 +297,17 @@ class ECGDemoServer
 
   def start
     @reader.open
+    self
   end
 
   def stop
     @reader.close
+    self
+  end
+
+  # JSON status
+  def status
+    { :port => @portname, :lastSample => @lastSample, :ecgdata => @ecgdata, :batteryV => @batteryVoltage, :spO2 => @spO2, :heartRate => @heartRate }.to_json
   end
 
   # Keys:
