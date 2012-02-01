@@ -53,8 +53,9 @@ span.label {
 	font-weight: bold;
 }
 
-#stopbutton {
-	width: 100px;
+#buttons div {
+	display: table-cell;
+	width: 150px;
 	background-color: rgb(100,100,100);
 	border: 2px;
 	text-align: center;
@@ -62,9 +63,5 @@ span.label {
 	font-weight: bold;
 	border-style: solid;
 	color: white;
-	cursor: pointer;
-}
-
-#stopbutton :hover {
 	cursor: pointer;
 }

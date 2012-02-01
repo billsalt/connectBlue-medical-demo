@@ -1,10 +1,13 @@
+// $Id$
 $(function () {
-	var maxPoints = 800;
+	var maxPoints = 2000;
+	var yrange = 14000;
+	var xrange = 7000;
+	var scrollPeriod = 10;
+	var scrollID = null;
 	var firstTime = 0;
 	var lastTime = 0;
 	var lastClock = 0;	// clock time as of last report
-	var yrange = 20000;
-	var xrange = 10000;
 	var averageValue = 32768;
 	var stopped = false;
 	var options = {
@@ -61,7 +64,7 @@ $(function () {
 	//		and v = 16-bit unsigned value 
 	function onDataReceived(series) {
 		lastReport = series;
-		lastClock = new Date().getTime();
+		lastClock = (new Date().getTime());
 		ref = series.ref;
 		var shifted = series.ecg.map(shiftData);
 		// data = data + shifted
@@ -76,33 +79,43 @@ $(function () {
 		$("#hr .value").text(series.hr || '--');
 		$("#spO2 .value").text(series.spO2 || '--');
 		$("#batt .value").text(series.battV || '--');
-		if (!stopped) {
-			fetchData();
-			setTimeout(scrollGraph, 100);
-		}
+		if (!stopped) { fetchData(); }
+	}
+
+	function rePlot(now) {
+		options.xaxis.max = lastTime + timeDiff;
+		options.xaxis.min = options.xaxis.max - xrange;
+		options.yaxis.max = averageValue + yrange / 2;
+		options.yaxis.min = averageValue - yrange / 2;
+		data[data.length - 1][1] = lastTime + timeDiff;	// extend last sample until now
+		$.plot($("#placeholder"), [ data ], options);
+		if (now) lastClock = now;
 	}
 
 	function scrollGraph() {
-		var now = new Date().getTime();
+		var now = (new Date().getTime());
 		var timeDiff = (now - lastClock);
-		if (stopped || timeDiff < 100) return;
-		options.xaxis.max = lastTime + timeDiff;
-		options.xaxis.min = options.xaxis.max - xrange;
-		$.plot($("#placeholder"), [ data ], options);
-		setTimeout(scrollGraph, 100);
+		if (timeDiff >= scrollPeriod) { rePlot(now); }
 	}
 
 	$("#stopbutton").click( function() {
 		stopped = !stopped;
 		$("#stopbutton").text(stopped ? "START" : "STOP");
 		if (!stopped) {
+			scrollID = setInterval(scrollGraph, scrollPeriod);
 			fetchData();
-			setTimeout(scrollGraph, 100);
+		} else {
+			clearInterval(scrollID);
 		}
 	});
 
+	$("#xzoomout").click( function() { xrange *= 1.5; rePlot(); });
+	$("#xzoomin").click( function() { xrange /= 1.5; rePlot(); });
+	$("#yzoomout").click( function() { yrange *= 1.5; rePlot(); });
+	$("#yzoomin").click( function() { yrange /= 1.5; rePlot(); });
+
 	fetchData();
-	setTimeout(scrollGraph, 100);
+	scrollID = setInterval(scrollGraph, scrollPeriod);
 });
 
 // vim: ts=4 sw=4 noet
