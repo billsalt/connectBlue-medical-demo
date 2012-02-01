@@ -15,7 +15,7 @@ $datasource = ECGDemoServer.new.start
 
 # Home screen
 get '/' do
-  send_file File.join(settings.public_folder, 'ajax.html')
+  send_file File.join(settings.public_folder, 'demo.html')
 end
 
 # block and wait for next data
