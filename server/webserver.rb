@@ -8,18 +8,33 @@ require 'sinatra'
 
 require './ecgdemo'
 
-set :environment, :development
-enable :dump_errors, :lock
-disable :sessions
+# set environment var CBDEMO=d for development
+set :environment, (ENV['CBDEMO']=='d') ? :development : :production
+$nostore = development?
+
+enable :dump_errors
+disable :sessions, :static, :lock
+
+helpers do
+  def send_public(*args)
+    send_file File.join(settings.public_folder, args.join('.'))
+  end
+  def send_doc(*args)
+    send_file File.join(settings.public_folder, "docs", args.join('.'))
+  end
+end
+
 $datasource = ECGDemoServer.new.start
 
 # Home screen
 get '/' do
-  send_file File.join(settings.public_folder, 'demo.html')
+  cache_control(:no_store) if $nostore
+  send_public('cbdemo.html')
 end
 
 # block and wait for next data
 get '/data.json' do
+  cache_control(:no_store)
   last_sample = (params['last_sample'] || "0").to_i
   # get all samples since last one
   content_type :json
@@ -27,7 +42,12 @@ get '/data.json' do
   j
 end
 
+get '/settings' do
+  settings.inspect
+end
+
 get '/status.json' do
+  cache_control(:no_store)
   content_type :json
   $datasource.status
 end
@@ -45,14 +65,19 @@ get "/docs" do
   ss
 end
 
-get "/docs/*.txt" do
-  content_type :"text/plain"
-  response['Cache-Control'] = 'no-cache'
-  pass
-end
+# get "/docs/*.txt" do
+#   content_type("text/plain")
+#   pass
+# end
+# 
+# get "/docs/*.pdf" do
+#   content_type("application/pdf")
+#   pass
+# end
 
-get "/docs/*.pdf" do
-  content_type :"application/pdf"
-  response['Cache-Control'] = 'no-cache'
-  pass
+# serving files from public folder
+
+get "/*.*" do |path, ext|
+  cache_control(:no_store) if $nostore && (path =~ /^cbdemo/)
+  send_public(path,ext)
 end

@@ -13,8 +13,9 @@ $(function () {
 	var options = {
 		lines: { show: true },
 		points: { show: false },
-		xaxis: { show: false, min: 0, max: xrange },
-		yaxis: { show: false, min: 0, max: 65535 }
+		margin: 0,
+		xaxis: { tickLength: 0, show: false, min: 0, max: xrange },
+		yaxis: { tickLength: 0, show: false, min: 0, max: 65535 }
 	};
 	var data = [];
 	var placeholder = $("#placeholder");

@@ -1,5 +1,6 @@
 body {
 	font-family: "Helvetica","Arial","Sans";
+	width: 970px;
 }
 
 div#stats {
@@ -8,7 +9,7 @@ div#stats {
 	border-color: gray;
 	border-style: solid;
 	padding: 10px;
-	margin: 4px 0 2px 0;
+	margin: 6px 0 6px 0;
 }
 
 div#stats div {
@@ -46,11 +47,16 @@ span.label {
 	font-weight: bold;
 }
 
-#caveats p {
+#caveats {
 	font-size: 24pt;
 	color: rgb(100,100,100);
 	font-style: italic;
 	font-weight: bold;
+	padding-top: 10px;
+}
+
+#buttons {
+	width: 970px;
 }
 
 #buttons div {
