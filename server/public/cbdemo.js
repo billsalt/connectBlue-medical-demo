@@ -5,6 +5,7 @@ $(function () {
 	var xrange = 7000;
 	var scrollPeriod = 10;
 	var scrollID = null;
+	var blankLedId = null;
 	var firstTime = 0;
 	var lastTime = 0;
 	var lastClock = 0;	// clock time as of last report
@@ -40,8 +41,12 @@ $(function () {
 
 	function getAverage(a) {
 		var avg = 0;
-		a.forEach(function (elem, index, arr) { avg += elem[1]; });
-		avg /= a.length;
+		var len = 0;
+		a.forEach(function (elem, index, arr) {
+			avg += elem[1];
+			len++;
+		});
+		avg /= len;
 		return avg;
 	}
 
@@ -54,12 +59,20 @@ $(function () {
 		firstTime = data[0][0];
 	}
 
+	function blankLed(greystate) {
+		$("#led_grey").css("display", greystate)
+		$("#led_red").css("display", "none")
+		$("#led_green").css("display", "none")
+		$("#led_yellow").css("display", "none")
+	}
+
 	// series properties:
 	// 'alarms' = <int>  bitmask
 	// 'spO2' = <int> percent
 	// 'hr' = <int> heart rate, BPM
 	// 'battV' = <float> battery voltage
 	// 'ref' = <int> lastSample
+	// 'greenp', 'redp' =  bool
 	// 'ecg' = [[t,v],[t,v] ... ]
 	//	  where t = timestamps in msec since lastSample
 	//		and v = 16-bit unsigned value 
@@ -79,16 +92,31 @@ $(function () {
 		$.plot($("#placeholder"), [ data ], options);
 		$("#hr .value").text(series.hr || '--');
 		$("#spO2 .value").text(series.spO2 || '--');
-		$("#batt .value").text(series.battV || '--');
+		$("#batt .value").text(series.battV || '--.-');
+
+		var color = null;
+		if (series.greenp) {
+		   if (series.redp) { color = "#led_yellow"; }
+		   else { color = "#led_green"; }
+		} else if (series.redp) { color = "#led_red"; }
+		if (color) {
+			blankLed("none");
+			$(color).css("display", "inherit");
+			if (blankLedId) clearTimeout(blankLedId);
+			blankLedId = setTimeout(blankLed, 200, "inherit");
+		} else
+			blankLed("inherit");
 		if (!stopped) { fetchData(); }
 	}
 
-	function rePlot(now) {
+	function rePlot(now, timeDiff) {
+		if (data.length < 1) return;
+		timeDiff = timeDiff || 0;
 		options.xaxis.max = lastTime + timeDiff;
 		options.xaxis.min = options.xaxis.max - xrange;
 		options.yaxis.max = averageValue + yrange / 2;
 		options.yaxis.min = averageValue - yrange / 2;
-		data[data.length - 1][1] = lastTime + timeDiff;	// extend last sample until now
+		data[data.length - 1][0] = lastTime + timeDiff;	// extend last sample until now
 		$.plot($("#placeholder"), [ data ], options);
 		if (now) lastClock = now;
 	}
@@ -96,7 +124,7 @@ $(function () {
 	function scrollGraph() {
 		var now = (new Date().getTime());
 		var timeDiff = (now - lastClock);
-		if (timeDiff >= scrollPeriod) { rePlot(now); }
+		if (timeDiff >= scrollPeriod) { rePlot(now, timeDiff); }
 	}
 
 	$("#stopbutton").click( function() {

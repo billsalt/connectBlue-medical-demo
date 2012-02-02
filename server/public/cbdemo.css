@@ -3,42 +3,50 @@ body {
 	width: 970px;
 }
 
+body div, body img {
+  margin-left: 2px;
+}
+
 div#stats {
 	width: 946px;
 	border: 2px;
 	border-color: gray;
 	border-style: solid;
 	padding: 10px;
-	margin: 6px 0 6px 0;
+	margin: 8px 0 6px 2px;
+  vertical-align: middle;
 }
 
 div#stats div {
-	width: 316px;
+	width: 236px;
+  height: 40px;
 	display: table-cell;
-}
-
-#hr {
-	text-align: left;
-}
-
-#spO2 {
-	text-align: center;
-}
-
-#batt {
-	text-align: right;
-}
-
-#placeholder	{ 
-	background-color: white;
-	width: 970px;
-	height: 200px;
+  text-align: center;
+  vertical-align: text-bottom;
 }
 
 div#stats span {
 	font-size: 24pt;
 	color: rgb(0,160,255);
 	font-family: "Helvetica","Arial","Sans";
+}
+
+#stats #leds {
+  padding-left: 130px;
+}
+
+#stats #leds img {
+  list-style: none;
+  position: absolute;
+  display: hidden;
+  vertical-align: top;
+}
+
+#placeholder	{ 
+	background-color: white;
+  margin-left: 0px;
+	width: 974px;
+	height: 200px;
 }
 
 span.label {
@@ -52,11 +60,15 @@ span.label {
 	color: rgb(100,100,100);
 	font-style: italic;
 	font-weight: bold;
-	padding-top: 10px;
+	padding: 10px;
+  background-color: rgb(192,192,192);
+  margin-top: 10px;
 }
 
 #buttons {
 	width: 970px;
+  margin-top: 6px;
+  margin-left: 0px;
 }
 
 #buttons div {

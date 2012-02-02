@@ -29,31 +29,17 @@ ruby ./ecgdemo.rb /dev/cu.cbMedicalDemo-SPP
 # Linux:
 #######
 
-$ sdptool browse
+$ bluez-test-device list
+00:07:61:BE:78:7B Logitech diNovo Keyboard
+00:18:16:05:EB:18 RF-MAB2
+00:07:61:BE:F4:C1 Logitech MX1000 mouse
+00:12:F3:0F:3B:4E cB Medical Demo
 
-Inquiring ...
-Browsing 00:12:F3:0F:3B:4E ...
-Service Name: SPP
-Service RecHandle: 0x10001
-Service Class ID List:
-  "Serial Port" (0x1101)
-Protocol Descriptor List:
-  "L2CAP" (0x0100)
-  "RFCOMM" (0x0003)
-    Channel: 1
+$ rfcomm -a
+rfcomm0: 00:12:F3:0F:3B:4E channel 1 clean 
 
-Service Name: SPP
-Service RecHandle: 0x10002
-Service Class ID List:
-  UUID 128: 00000000-deca-fade-deca-deafdecacaff
-Protocol Descriptor List:
-  "L2CAP" (0x0100)
- "RFCOMM" (0x0003)
-    Channel: 5
+$ sudo rfcomm bind /dev/rfcomm0 00:12:F3:0F:3B:4E 1
 
+$ ruby ./ecgdemo.rb /dev/rfcomm0
 
-or sdptool search 0x1101
-
-sudo rfcomm bind /dev/rfcomm0 00:12:F3:0F:3B:4E 1
-
-ruby ./ecgdemo.rb /dev/rfcomm0
+rfcomm0: 00:12:F3:0F:3B:4E channel 1 connected [tty-attached]

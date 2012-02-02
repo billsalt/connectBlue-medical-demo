@@ -6,6 +6,7 @@ require 'json'
 require 'monitor'
 
 require './noninipod'
+require './btconnect'
 
 # Example of interface required for OBI411Parser clients
 module OBI411ParserClientMixin
@@ -136,6 +137,7 @@ class OBI411Parser
 end
 
 class ECGDemoReader
+
   # n: node number; c: ADC channel; v: ADC value
   def handleADCStatus(n,c,v)
     @client.handleADCStatus(n,c,v)
@@ -154,23 +156,9 @@ class ECGDemoReader
   # def handleNoninSequence(n,seq)
   # end
 
-  # return probable port name
+  # return probable port name or nil
   def self.likelyPortName
-    case RUBY_PLATFORM
-    when /linux/
-      IO.popen("rfcomm -a") do |f|
-        f.lines.each do |l|
-          if /^(\w+): 00:12:.*/.match(l)
-            return "/dev/#{$1}"
-          end
-        end
-      end
-    when /darwin/
-      return "/dev/cu.cBMedicalDemo-SPP"
-    else
-      raise "unsupported platform #{RUBY_PLATFORM}"
-    end
-    nil
+    Bluetooth.findSerialDevice("cB Medical Demo")
   end
 
   # active thread
@@ -203,6 +191,7 @@ class ECGDemoReader
   end
 
   def open
+    $stderr.puts("opening #{@portname}")
     @port = SerialPort.new(@portname, 230400, 8, 1, SerialPort::NONE)
     @thread = run(nil)
   end
@@ -268,6 +257,8 @@ class ECGDemoServer
       @alarms = seq[:alarms]
       @spO2 = seq[:SpO2]
       @heartRate = seq[:heartRate]
+      @greenp = seq.include?(:greenp)
+      @redp = seq.include?(:redp)
       @cond.broadcast
     end
   end
@@ -286,6 +277,7 @@ class ECGDemoServer
     @ecgdata[0] = [0,0]
     @spO2 = 0
     @heartRate = 0
+    @greenp = @redp = false
   end
 
   # waits until some samples ready
@@ -331,6 +323,8 @@ class ECGDemoServer
       :spO2 => @spO2,
       :hr => @heartRate,
       :battV => @batteryVoltage,
+      :redp => @redp,
+      :greenp => @greenp,
       :ref => lastSample,
       :ecg => s }.to_json
     return [j, s[-1][0] + lastSample]
