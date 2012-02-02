@@ -4,55 +4,76 @@ body {
 }
 
 body div, body img {
-  margin-left: 2px;
+	margin-left: 2px;
 }
 
 div#stats {
 	width: 946px;
+	height: 40px;
 	border: 2px;
 	border-color: gray;
 	border-style: solid;
 	padding: 10px;
 	margin: 8px 0 6px 2px;
-  vertical-align: middle;
+	vertical-align: middle;
+	position: relative;
 }
 
 div#stats div {
 	width: 236px;
-  height: 40px;
-	display: table-cell;
-  text-align: center;
-  vertical-align: text-bottom;
+	height: 40px;
+	display: inline;
+	text-align: justify;
+	vertical-align: baseline;
+	position: absolute;
 }
 
 div#stats span {
 	font-size: 24pt;
 	color: rgb(0,160,255);
 	font-family: "Helvetica","Arial","Sans";
+	vertical-align: text-bottom;
+}
+
+#stats .label {
+	padding-right: 10px;
+	font-size: 24px;
+	font-style: italic;
+}
+
+#stats .value {
+	font-size: 32px;
+	font-weight: bold;
+}
+
+#stats #hr {
+	left: 20px;
+}
+
+#stats #spO2 {
+	left: 310px;
+}
+
+#stats #batt {
+	left: 560px;
 }
 
 #stats #leds {
-  padding-left: 130px;
+	display: inline;
 }
 
 #stats #leds img {
-  list-style: none;
-  position: absolute;
-  display: hidden;
-  vertical-align: top;
+	list-style: none;
+	position: fixed;
+	display: none;
+	left: 910px;
 }
 
 #placeholder	{ 
 	background-color: white;
-  margin-left: 0px;
+	margin-left: 0px;
 	width: 974px;
 	height: 200px;
-}
-
-span.label {
-	padding-right: 10px;
-	font-style: italic;
-	font-weight: bold;
 }
 
 #caveats {
@@ -61,19 +82,20 @@ span.label {
 	font-style: italic;
 	font-weight: bold;
 	padding: 10px;
-  background-color: rgb(192,192,192);
-  margin-top: 10px;
+	background-color: rgb(192,192,192);
+	margin-top: 10px;
 }
 
 #buttons {
 	width: 970px;
-  margin-top: 6px;
-  margin-left: 0px;
+	margin-top: 6px;
+	margin-left: 0px;
+	padding-left: 2px;
 }
 
 #buttons div {
 	display: table-cell;
-	width: 150px;
+	width: 190px;
 	background-color: rgb(100,100,100);
 	border: 2px;
 	text-align: center;

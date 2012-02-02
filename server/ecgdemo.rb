@@ -257,8 +257,8 @@ class ECGDemoServer
       @alarms = seq[:alarms]
       @spO2 = seq[:SpO2]
       @heartRate = seq[:heartRate]
-      @greenp = seq.include?(:greenp)
-      @redp = seq.include?(:redp)
+      @greenp = seq.include?(:greenp) ? seq[:greenp].size : 0
+      @redp = seq.include?(:redp) ? seq[:redp].size : 0
       @cond.broadcast
     end
   end
@@ -277,7 +277,7 @@ class ECGDemoServer
     @ecgdata[0] = [0,0]
     @spO2 = 0
     @heartRate = 0
-    @greenp = @redp = false
+    @greenp = @redp = 0
   end
 
   # waits until some samples ready

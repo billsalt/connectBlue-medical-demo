@@ -2,14 +2,21 @@
 $(function () {
 	var maxPoints = 2000;
 	var yrange = 14000;
-	var xrange = 7000;
-	var scrollPeriod = 10;
+	var xrange = (3.0 * 70 / 60) * 1000;  // 3 beats at 70 bpm
+	var scrollPeriod = 50;
+	var ledThreshold = 1;
+
+	var debugMode = false;	// true to print stats
+	var numUpdates = 0;
+	var numPackets = 0;
+
 	var scrollID = null;
-	var blankLedId = null;
-	var firstTime = 0;
-	var lastTime = 0;
+	var blankLedID = null;
+
+	var lastTime = 0;	// timestamp as of last report
 	var lastClock = 0;	// clock time as of last report
-	var averageValue = 32768;
+	var numInserted = 0;
+
 	var stopped = false;
 	var options = {
 		lines: { show: true },
@@ -20,8 +27,6 @@ $(function () {
 	};
 	var data = [];
 	var placeholder = $("#placeholder");
-	var lastReport = null;
-	var ref = 0;
 
 	function fetchData() {
 	  	$.ajax({
@@ -33,30 +38,33 @@ $(function () {
 		});
 	}
 
-	// returns new 2-element array with time shifted
-	// by value of ref
-	var shiftData = function(a) {
-	  return [a[0] + ref, a[1]];
-	}
+	function lastXValue() { return data[data.length-1][0]; }
 
-	function getAverage(a) {
+	function lastYValue() { return data[data.length-1][1]; }
+
+	function getAverage(a, minx) {
 		var avg = 0;
 		var len = 0;
 		a.forEach(function (elem, index, arr) {
-			avg += elem[1];
-			len++;
+			if (elem[0] >= minx) {
+				avg += elem[1];
+				len++;
+			}
 		});
 		avg /= len;
 		return avg;
 	}
 
 	// chop data to last maxPoints points
-	// get averageValue
+	// set axis limits
+	// returns last X value
 	function normalizeData() {
-		if (data.length < 1) return;
+		if (data.length < 1) return 0;
 		if (data.length > maxPoints) { data = data.slice(data.length - maxPoints + 1); }
-		lastTime = data[data.length - 1][0];
-		firstTime = data[0][0];
+		var averageValue = getAverage(data, options.xaxis.min);
+		options.yaxis.max = averageValue + yrange / 2;
+		options.yaxis.min = averageValue - yrange / 2;
+		return options.xaxis.max = lastXValue();
 	}
 
 	function blankLed(greystate) {
@@ -66,65 +74,74 @@ $(function () {
 		$("#led_yellow").css("display", "none")
 	}
 
+	function updateLEDs(series) {
+		var color = null;
+		if (series.greenp > ledThreshold) {
+		   if (series.redp > ledThreshold) { color = "#led_yellow"; }
+		   else { color = "#led_green"; }
+		} else if (series.redp > ledThreshold) { color = "#led_red"; }
+
+		if (color) {
+			blankLed("none");
+			$(color).css("display", "inherit");
+			if (blankLedID) clearTimeout(blankLedID);
+			blankLedID = setTimeout(blankLed, 200, "inherit");
+		}
+	}
+
 	// series properties:
 	// 'alarms' = <int>  bitmask
 	// 'spO2' = <int> percent
 	// 'hr' = <int> heart rate, BPM
 	// 'battV' = <float> battery voltage
 	// 'ref' = <int> lastSample
-	// 'greenp', 'redp' =  bool
+	// 'greenp', 'redp' =  number
 	// 'ecg' = [[t,v],[t,v] ... ]
 	//	  where t = timestamps in msec since lastSample
 	//		and v = 16-bit unsigned value 
 	function onDataReceived(series) {
-		lastReport = series;
 		lastClock = (new Date().getTime());
-		ref = series.ref;
-		var shifted = series.ecg.map(shiftData);
-		// data = data + shifted
-		data = data.concat(shifted);
-		normalizeData();
-		averageValue = getAverage(data);
-		options.xaxis.max = lastTime;
-		options.xaxis.min = lastTime - xrange;
-		options.yaxis.max = averageValue + yrange / 2;
-		options.yaxis.min = averageValue - yrange / 2;
-		$.plot($("#placeholder"), [ data ], options);
-		$("#hr .value").text(series.hr || '--');
-		$("#spO2 .value").text(series.spO2 || '--');
-		$("#batt .value").text(series.battV || '--.-');
-
-		var color = null;
-		if (series.greenp) {
-		   if (series.redp) { color = "#led_yellow"; }
-		   else { color = "#led_green"; }
-		} else if (series.redp) { color = "#led_red"; }
-		if (color) {
-			blankLed("none");
-			$(color).css("display", "inherit");
-			if (blankLedId) clearTimeout(blankLedId);
-			blankLedId = setTimeout(blankLed, 200, "inherit");
+		var ref = series.ref;
+		var shifted = series.ecg.map(function (v,i,a) { return [v[0] + ref, v[1]]; });
+		// remove inserted points
+		if (numInserted > 0) {
+			data = data.slice(0,-numInserted).concat(shifted);
+			numInserted = 0;
 		} else
-			blankLed("inherit");
+			data = data.concat(shifted);
+		lastTime = normalizeData();
+		$("#hr .value").html(series.hr || '&ndash;&ndash;');
+		$("#spO2 .value").html(series.spO2 || '&ndash;&ndash;');
+		$("#batt .value").html(series.battV || '&ndash;&ndash;.&ndash');
+		updateLEDs(series);
+		if (debugMode) {
+			$("#greenp").text('green: ' + series.greenp);
+			$("#redp").text('red: ' + series.redp);
+			$("#packets").text('packets: ' + ++numPackets);
+		}
 		if (!stopped) { fetchData(); }
 	}
 
-	function rePlot(now, timeDiff) {
+	function rePlot() {
 		if (data.length < 1) return;
-		timeDiff = timeDiff || 0;
-		options.xaxis.max = lastTime + timeDiff;
-		options.xaxis.min = options.xaxis.max - xrange;
-		options.yaxis.max = averageValue + yrange / 2;
-		options.yaxis.min = averageValue - yrange / 2;
-		data[data.length - 1][0] = lastTime + timeDiff;	// extend last sample until now
+		options.xaxis.min = lastXValue() - xrange;
 		$.plot($("#placeholder"), [ data ], options);
-		if (now) lastClock = now;
 	}
 
 	function scrollGraph() {
+		if (data.length < 1) return;
 		var now = (new Date().getTime());
 		var timeDiff = (now - lastClock);
-		if (timeDiff >= scrollPeriod) { rePlot(now, timeDiff); }
+		if (timeDiff <=0) return;
+		// insert duplicate point to avoid gaps at right of graph
+		data = data.concat([[lastTime + timeDiff, lastYValue()]]);
+		numInserted++;
+		normalizeData();
+		rePlot(now);
+		if (debugMode) {
+			numUpdates++;
+			$("#updates").text('updates: ' + numUpdates);
+		}
 	}
 
 	$("#stopbutton").click( function() {
@@ -140,9 +157,10 @@ $(function () {
 
 	$("#xzoomout").click( function() { xrange *= 1.5; rePlot(); });
 	$("#xzoomin").click( function() { xrange /= 1.5; rePlot(); });
-	$("#yzoomout").click( function() { yrange *= 1.5; rePlot(); });
-	$("#yzoomin").click( function() { yrange /= 1.5; rePlot(); });
+	$("#yzoomout").click( function() { yrange *= 1.5; normalizeData(); rePlot(); });
+	$("#yzoomin").click( function() { yrange /= 1.5; normalizeData(); rePlot(); });
 
+	blankLed("inherit");
 	fetchData();
 	scrollID = setInterval(scrollGraph, scrollPeriod);
 });
