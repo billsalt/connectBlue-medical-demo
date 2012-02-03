@@ -5,8 +5,17 @@ require 'serialport'
 require 'json'
 require 'monitor'
 
-require './noninipod'
-require './btconnect'
+require 'noninipod'
+require 'btconnect'
+
+# Ruby 1.8 compatibility
+if RUBY_VERSION =~ /^1\.8/
+class String
+  def force_encoding(enc)
+    self
+  end
+end
+end
 
 # Example of interface required for OBI411Parser clients
 module OBI411ParserClientMixin
@@ -207,7 +216,7 @@ end
 # model: parses serial stream, saves up to MAX_SAMPLES in array, reports
 # samples and other data
 # NOTE no handling of multiple nodes
-class ECGDemoServer
+class ECGDemoDataSource
   include OBI411ParserClientMixin
 
   # 2.85Vadc = 0xFFFF = 6.75Vbatt
@@ -366,7 +375,7 @@ if __FILE__ == $0
 #  OBI411ParserTest.test($portname)
 
 begin
-  s = ECGDemoServer.new($portname)
+  s = ECGDemoDataSource.new($portname)
   s.start
   t = 0
   while true

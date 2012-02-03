@@ -1,18 +1,18 @@
 # Web server (using Sinatra framework) for connectBlue ECG demo board
 # $Id$
+BEGIN { $: << File.dirname(File.expand_path($0)) }
+
 require 'rubygems'
 require 'cgi'
 require 'fileutils'
 require 'pp'
 require 'sinatra'
 
-require './ecgdemo'
+require 'ecgdemo'
 
-# set environment var CBDEMO=d for development
-set :environment, (ENV['CBDEMO']=='d') ? :development : :production
 $nostore = development?
 
-enable :dump_errors
+enable :dump_errors, :logging, :run
 disable :sessions, :static, :lock
 
 helpers do
@@ -24,7 +24,7 @@ helpers do
   end
 end
 
-$datasource = ECGDemoServer.new.start
+$datasource = ECGDemoDataSource.new.start
 
 # Home screen
 get '/' do
@@ -81,3 +81,4 @@ get "/*.*" do |path, ext|
   cache_control(:no_store) if $nostore && (path =~ /^cbdemo/)
   send_public(path,ext)
 end
+
