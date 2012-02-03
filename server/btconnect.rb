@@ -52,11 +52,9 @@ module Bluetooth
       begin
         IO.popen("rfcomm -a").each_line do |line|
           case line
-          when /(\w+): ([0-9A-F:]+) channel (\d+) (closed|clean)/
+          when /^(\w+): (?:[0-9A-F:]+ -> )?([0-9A-F:]+) channel (\d+) (closed|clean)/
             used[$1] = $2
             return "/dev/#{$1}" if ($2 == mac) && ($3 == channel.to_s)
-          else
-            raise "unknown response #{line}"
           end
         end
         raise UnboundBTError.new("not found")
@@ -66,8 +64,13 @@ module Bluetooth
         return nil
 
       rescue UnboundBTError => e
-        dev = ("rfcomm0" .. "rfcomm9").find { |nm| !used.include?(nm) }
-        system("sudo rfcomm bind /dev/#{dev} #{mac} #{channel}")
+        ("rfcomm0" .. "rfcomm9").find do |nm|
+          if !used.include?(nm)
+            $stderr.puts("trying to bind #{nm}")
+            used[nm] = true
+            system("sudo rfcomm bind /dev/#{nm} #{mac} #{channel}")
+          end
+        end
         retry
       end
 
@@ -85,11 +88,11 @@ end
 
 # test when run by itself
 if __FILE__ == $0
-  include Bluetooth
-  puts discoveredDevices().inspect
   nm = "cB Medical Demo"
-  mac = findDeviceMac(nm)
+  mac = Bluetooth.findDeviceMac(nm)
   puts "#{nm} MAC = #{mac}"
-  dev = findSerialDevice(nm)
+  dev = Bluetooth.findSerialDevice(nm)
   puts "#{nm} dev = #{dev}"
+  puts "discovered:"
+  puts Bluetooth.discoveredDevices().inspect
 end
