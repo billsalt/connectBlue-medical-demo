@@ -4,9 +4,9 @@
 <head>
 	<meta name="generator" content="HTML Tidy for Linux (vers 25 March 2009), see www.w3.org">
   <meta http-equiv="Content-Type" content="text/html; charset=us-ascii">
+	<!-- enable use as full-screen app on iPhone or iPad -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-
   <title>connectBlue OBI411 ECG Demo</title>
   <link href="cbdemo.css" rel="stylesheet" type="text/css">
   <script language="javascript" type="text/javascript" src="jquery.js"></script>
@@ -14,7 +14,10 @@
   <script language="javascript" type="text/javascript" src="cbdemo.js"></script>
 </head>
 <body>
-  <img src="connectBlue-logo.png" alt="connectBlue logo">
+	<!-- logo with link to connectblue.com -->
+	<a href="http://www.connectblue.com/" target="_blank">
+		<img src="connectBlue-logo.png" alt="connectBlue logo">
+	</a>
 
 	<!-- status text -->
 	<div id="stats">
@@ -29,30 +32,17 @@
 		</div>
   </div>
 
-  <div id="placeholder"><!-- graph area --></div>
+	<!-- graph area -->
+  <div id="placeholder"></div>
 
 	<!-- button bar -->
-  <div id="buttons">
-    <div id="stopbutton">
-      STOP
-    </div>
-
-    <div id="xzoomout">
-      X ZOOM OUT
-    </div>
-
-    <div id="xzoomin">
-      X ZOOM IN
-    </div>
-
-    <div id="yzoomout">
-      Y ZOOM OUT
-    </div>
-
-    <div id="yzoomin">
-      Y ZOOM IN
-    </div>
-  </div>
+  <form id="buttons">
+    <input id="stopbutton" type="button" value="STOP"</input>
+    <input id="xzoomout"   type="button" value="X ZOOM OUT"</input>
+    <input id="xzoomin"    type="button" value="X ZOOM IN"</input>
+    <input id="yzoomout"   type="button" value="Y ZOOM OUT"</input>
+    <input id="yzoomin"    type="button" value="Y ZOOM IN"</input>
+  </form>
 
   <div id="caveats">
     FOR DEMONSTRATION PURPOSES ONLY<br>
@@ -66,6 +56,6 @@
 	<span id="packets">0</span>
 	-->
 	<!-- vim: ts=2 sw=2 noet
--->
+  -->
 </body>
 </html>

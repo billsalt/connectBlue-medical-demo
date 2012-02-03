@@ -1,6 +1,10 @@
 // $Id$
 $(function () {
 	var maxPoints = 2000;
+	// Av = 5.4*340 = *1836
+	// 65536 counts = 2.85V => 23.7nV/count
+	// for 100uV ticks: 100uV/23.7nV = 4222 counts
+	var vPerTick = 2.85 / 65536 / (5.4*340);
 	var yrange = 14000;
 	var xrange = (3.0 * 70 / 60) * 1000;  // 3 beats at 70 bpm
 	var scrollPeriod = 50;
@@ -12,19 +16,31 @@ $(function () {
 
 	var scrollID = null;
 	var blankLedID = null;
-
+	var averageValue = 32768;
 	var lastTime = 0;	// timestamp as of last report
 	var lastClock = 0;	// clock time as of last report
 	var numInserted = 0;
 
+	function yTickGenerator(axis) {	// make 100uV ticks
+		var retval = [], i, oneHundreduV = 100e-6 / vPerTick;	// ticks/100uV
+		var ymax = Math.ceil((axis.max - 32768) / oneHundreduV);
+		var ymin = Math.floor((axis.min - 32768) / oneHundreduV);
+		for (i = ymin; i < ymax; i++) { retval.push(i * oneHundreduV + 32768); }
+		return retval;
+	}
+
+	function yTickFormatter(val, axis) {
+		// return ((val-32768)*1.0e6*vPerTick).toFixed(0);
+		return "";
+	}
+
 	var stopped = false;
 	var options = {
-		lines: { show: true },
-		points: { show: false },
+		series: { lines: { show: true }, points: { show: false } },
 		margin: 0,
 		xaxis: { tickLength: 0, show: false, min: 0, max: xrange },
-		yaxis: { tickLength: 0, show: false, min: 0, max: 65535 }
-	};
+		yaxis: { tickSize: 100e-6/vPerTick, labelWidth: 0, show: true, min: 0, max: 65535,
+				tickFormatter: yTickFormatter, ticks: yTickGenerator } };
 	var data = [];
 	var placeholder = $("#placeholder");
 
@@ -43,16 +59,9 @@ $(function () {
 	function lastYValue() { return data[data.length-1][1]; }
 
 	function getAverage(a, minx) {
-		var avg = 0;
-		var len = 0;
-		a.forEach(function (elem, index, arr) {
-			if (elem[0] >= minx) {
-				avg += elem[1];
-				len++;
-			}
-		});
-		avg /= len;
-		return avg;
+		var avg = 0, len = 0;
+		a.forEach(function (elem, index, arr) { if (elem[0] >= minx) { avg += elem[1]; len++; } });
+		return avg / len;
 	}
 
 	// chop data to last maxPoints points
@@ -61,9 +70,9 @@ $(function () {
 	function normalizeData() {
 		if (data.length < 1) return 0;
 		if (data.length > maxPoints) { data = data.slice(data.length - maxPoints + 1); }
-		var averageValue = getAverage(data, options.xaxis.min);
-		options.yaxis.max = averageValue + yrange / 2;
-		options.yaxis.min = averageValue - yrange / 2;
+		averageValue = getAverage(data, options.xaxis.min);
+		options.yaxis.max = Math.min(65535, averageValue + yrange / 2);
+		options.yaxis.min = Math.max(0, averageValue - yrange / 2);
 		return options.xaxis.max = lastXValue();
 	}
 
@@ -146,7 +155,7 @@ $(function () {
 
 	$("#stopbutton").click( function() {
 		stopped = !stopped;
-		$("#stopbutton").text(stopped ? "START" : "STOP");
+		$("#stopbutton").val(stopped ? "START" : "STOP");
 		if (!stopped) {
 			scrollID = setInterval(scrollGraph, scrollPeriod);
 			fetchData();

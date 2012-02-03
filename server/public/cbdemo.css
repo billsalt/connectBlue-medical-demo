@@ -1,5 +1,5 @@
 body {
-	font-family: "Helvetica","Arial","Sans";
+	font-family: "verdana";
 	width: 970px;
 }
 
@@ -31,7 +31,6 @@ div#stats div {
 div#stats span {
 	font-size: 24pt;
 	color: rgb(0,160,255);
-	font-family: "Helvetica","Arial","Sans";
 	vertical-align: text-bottom;
 }
 
@@ -81,27 +80,30 @@ div#stats span {
 	color: rgb(100,100,100);
 	font-style: italic;
 	font-weight: bold;
-	padding: 10px;
+	padding: 10px 10px 10px 30px;
 	background-color: rgb(192,192,192);
 	margin-top: 10px;
 }
 
 #buttons {
 	width: 970px;
-	margin-top: 6px;
+	margin-top: 4px;
 	margin-left: 0px;
 	padding-left: 2px;
 }
 
-#buttons div {
+#buttons input {
+	font-size: 14pt;
+	padding: 0px;
 	display: table-cell;
-	width: 190px;
+	width: 189px;
 	background-color: rgb(100,100,100);
 	border: 2px;
 	text-align: center;
 	font-style: italic;
 	font-weight: bold;
 	border-style: solid;
+	border-color: black;
 	color: white;
 	cursor: pointer;
 }
