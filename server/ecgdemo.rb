@@ -112,7 +112,7 @@ class OBI411Parser
   end
 
   def formatIOWritePacket(nodeid, value, mask)
-    bytes = [START_BYTE, ID_IO_WRITE, nodeid, value, mask, 0].pack('CCCnnC')
+    bytes = START_BYTE + ID_IO_WRITE + [nodeid, value, mask, 0].pack('CnnC')
     bytes[-1] = (bytes[0..-2].sum & 0xFF).chr # checksum
     bytes
   end
@@ -237,7 +237,7 @@ end
 class ECGDemoDataSource
   include OBI411ParserClientMixin
 
-  YELLOW_LED_MASK = 1<<10   # DIO10
+  YELLOW_LED_MASK = 2**10   # DIO10
 
   # 2.85Vadc = 0xFFFF = 6.75Vbatt
   # round to nearest 10 mV
@@ -265,7 +265,7 @@ class ECGDemoDataSource
 
   # DIO 10
   def lightYellowLED(lit = true)
-    @reader.writeIO(0, (lit ? YELLOW_LED_MASK : 0), YELLOW_LED_MASK)
+    @reader.writeIO(0, (lit ? 0 : YELLOW_LED_MASK), YELLOW_LED_MASK)
   end
 
   def addECGSample(val)
@@ -294,6 +294,7 @@ class ECGDemoDataSource
       @greenp = seq.include?(:greenp) ? seq[:greenp].size : 0
       @redp = seq.include?(:redp) ? seq[:redp].size : 0
       @cond.broadcast
+      lightYellowLED(@greenp > 0)
     end
   end
 
