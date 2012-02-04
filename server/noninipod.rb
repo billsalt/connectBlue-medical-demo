@@ -57,10 +57,10 @@ protected
     @status.each_with_index do |s,i|
       alarmsNow = (s & REJECT_DATA_MASK)
       alarms |= alarmsNow
-      if alarmsNow.zero?
+    if alarmsNow.zero?
         (greenp << i) if (s & GREEN_PERFUSION_MASK).nonzero?
         (redp << i) if (s & RED_PERFUSION_MASK).nonzero?
-      end
+    end
     end
     retval = { :alarms => alarms }
     retval[:greenp] = greenp unless greenp.empty?
