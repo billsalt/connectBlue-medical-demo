@@ -111,6 +111,12 @@ class OBI411Parser
     return len + 4
   end
 
+  def formatIOWritePacket(nodeid, value, mask)
+    bytes = [START_BYTE, ID_IO_WRITE, nodeid, value, mask, 0].pack('CCCnnC')
+    bytes[-1] = (bytes[0..-2].sum & 0xFF).chr # checksum
+    bytes
+  end
+
   def initialize(client)
     @packet = ''.force_encoding('BINARY')
     # check client protocol compliance
@@ -184,6 +190,9 @@ class ECGDemoReader
           bytes = r.sysread(1000)
           @obiparser.parse(bytes)
         end
+        if @writeQueue.length > 0
+          @port.syswrite(@writeQueue.pop)
+        end
       end
       @port.close
     end
@@ -197,6 +206,7 @@ class ECGDemoReader
     @thread = nil
     @threadStopped = false
     @startTime = Time.now.to_f
+    @writeQueue = Queue.new
   end
 
   def open
@@ -211,6 +221,14 @@ class ECGDemoReader
     @thread = @port = nil
   end
 
+  def write(bytes)
+    @writeQueue.enq(bytes)
+  end
+
+  def writeIO(node, value, mask)
+    write(@obiparser.formatIOWritePacket(node, value, mask))
+  end
+
 end
 
 # model: parses serial stream, saves up to MAX_SAMPLES in array, reports
@@ -218,6 +236,8 @@ end
 # NOTE no handling of multiple nodes
 class ECGDemoDataSource
   include OBI411ParserClientMixin
+
+  YELLOW_LED_MASK = 1<<10   # DIO10
 
   # 2.85Vadc = 0xFFFF = 6.75Vbatt
   # round to nearest 10 mV
@@ -241,6 +261,11 @@ class ECGDemoDataSource
   # n: node number; v: IO value; m: IO mask
   def handleIOStatus(n,v,m)
     # TODO
+  end
+
+  # DIO 10
+  def lightYellowLED(lit = true)
+    @reader.writeIO(0, (lit ? YELLOW_LED_MASK : 0), YELLOW_LED_MASK)
   end
 
   def addECGSample(val)
@@ -301,6 +326,7 @@ class ECGDemoDataSource
 
   def start
     @reader.open
+    lightYellowLED(false)
     self
   end
 
