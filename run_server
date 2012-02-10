@@ -1,3 +1,15 @@
 #!/bin/bash
-cd $(dirname $0)/server
-bundle exec ruby ./webserver.rb
+set -x
+exec >/tmp/cbdemo.out 2>&1
+. ~/.bash_profile
+PIDFILE=/tmp/connectBlueDemo.pid
+if [ -f $PIDFILE ]; then
+  kill -9 $(< $PIDFILE) && sleep 10
+fi
+cd /Users/billsalt/Desktop/WebDemoApp/server
+bundle exec ruby ./webserver.rb &
+echo $! > $PIDFILE
+disown
+sleep 10
+open http://localhost:4567/
+
