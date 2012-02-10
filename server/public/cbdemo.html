@@ -1,0 +1,61 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!-- $Id$ -->
+<html>
+<head>
+	<meta name="generator" content="HTML Tidy for Linux (vers 25 March 2009), see www.w3.org">
+  <meta http-equiv="Content-Type" content="text/html; charset=us-ascii">
+	<!-- enable use as full-screen app on iPhone or iPad -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <title>connectBlue OBI411 ECG Demo</title>
+  <link href="cbdemo.css" rel="stylesheet" type="text/css">
+  <script language="javascript" type="text/javascript" src="jquery.js"></script>
+  <script language="javascript" type="text/javascript" src="jquery.flot.js"></script>
+  <script language="javascript" type="text/javascript" src="cbdemo.js"></script>
+</head>
+<body>
+	<!-- logo with link to connectblue.com -->
+	<a href="http://www.connectblue.com/" target="_blank">
+		<img src="connectBlue-logo.png" alt="connectBlue logo">
+	</a>
+
+	<!-- status text -->
+	<div id="stats">
+    <div id="hr"><span class="label">Heart Rate:</span><span class="value">--</span></div>
+    <div id="spO2"><span class="label">SpO<sub>2</sub>%:</span><span class="value">--</span></div>
+    <div id="batt"><span class="label">Battery V:</span><span class="value">0.00</span></div>
+		<div id="leds">
+			<img id="led_green" src="led_green.png">
+			<img id="led_red" src="led_red.png">
+			<img id="led_yellow" src="led_yellow.png">
+			<img id="led_grey" src="led_grey.png">
+		</div>
+  </div>
+
+	<!-- graph area -->
+  <div id="placeholder"></div>
+
+	<!-- button bar -->
+  <form id="buttons">
+    <input id="stopbutton" type="button" value="STOP"</input>
+    <input id="xzoomout"   type="button" value="X ZOOM OUT"</input>
+    <input id="xzoomin"    type="button" value="X ZOOM IN"</input>
+    <input id="yzoomout"   type="button" value="Y ZOOM OUT"</input>
+    <input id="yzoomin"    type="button" value="Y ZOOM IN"</input>
+  </form>
+
+  <div id="caveats">
+    FOR DEMONSTRATION PURPOSES ONLY<br>
+    NOT FOR PATIENT USE
+	</div>
+	<!-- debug only -->
+	<!--
+	<span id="redp">0</span><br>
+	<span id="greenp">0</span><br>
+	<span id="updates">0</span><br>
+	<span id="packets">0</span>
+	-->
+	<!-- vim: ts=2 sw=2 noet
+  -->
+</body>
+</html>
