@@ -226,7 +226,8 @@ class ECGDemoReader
   end
 
   def writeIO(node, value, mask)
-    write(@obiparser.formatIOWritePacket(node, value, mask))
+    packet = @obiparser.formatIOWritePacket(node, value, mask)
+    write(packet)
   end
 
 end

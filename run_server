@@ -1,12 +1,12 @@
 #!/bin/bash
 set -x
-exec >/tmp/cbdemo.out 2>&1
 . ~/.bash_profile
+exec >/tmp/cbdemo.out 2>&1
 PIDFILE=/tmp/connectBlueDemo.pid
 if [ -f $PIDFILE ]; then
   kill -9 $(< $PIDFILE) && sleep 10
 fi
-cd /Users/billsalt/Desktop/WebDemoApp/server
+cd /Users/billsalt/src/connectBlue-medical-demo/server
 bundle exec ruby ./webserver.rb &
 echo $! > $PIDFILE
 disown
