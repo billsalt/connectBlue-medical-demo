@@ -1,0 +1,14 @@
+---
+    environment: production
+    chdir: /home/ned/src/connectBlue/ECGDemoBoard/Firmware/WebDemoApp/server
+    address: 127.0.0.1
+    user: ned
+    group: ned
+    port: 4567
+    pid: thin.pid
+    rackup: webserver.ru
+    log: webserver.log
+    max_conns: 1024
+    timeout: 30
+    max_persistent_conns: 512
+    daemonize: true
