@@ -1,7 +1,7 @@
 #!/bin/bash
-set -x
-. ~/.bash_profile
 exec >/tmp/cbdemo.out 2>&1
+. ~/.bash_profile
+set -x
 PIDFILE=/tmp/connectBlueDemo.pid
 if [ -f $PIDFILE ]; then
   kill -9 $(< $PIDFILE) && sleep 10
