@@ -6,10 +6,12 @@ PIDFILE=/tmp/connectBlueDemo.pid
 if [ -f $PIDFILE ]; then
   kill -9 $(< $PIDFILE) && sleep 10
 fi
+killall mDNS
 cd /Users/billsalt/src/connectBlue-medical-demo/server
 bundle exec ruby ./webserver.rb &
 echo $! > $PIDFILE
 disown
 sleep 10
 open http://localhost:4567/
-
+mDNS -R cbdemo _http._tcp . 4567 &
+disown
